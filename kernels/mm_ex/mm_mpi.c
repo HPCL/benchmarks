@@ -6,8 +6,9 @@
  *                C  = A * B
  *
  * A ,B and C are both square matrix. They are statically allocated and
- * initialized with constant number, so we can focuse on the parallelism.
+ * initialized with constant number, so we can focus on the parallelism.
  *
+ * usage: mpirun -np <N> mm_mpi [-t]
  */
 
 #include <stdlib.h>
@@ -134,9 +135,9 @@ size_t check_result(TYPE* C) {
           }
         }
         if (ee > TOL) {
-                return 0;
+          return 0;
         } else {
-                return 1;
+          return 1;
         }
 }
 
@@ -148,7 +149,7 @@ int main(int argc, char **argv) {
   size_t order_2 = (size_t)ORDER*(size_t)ORDER;
 
   size_t correct;
-  size_t err = 0;
+  size_t rc = 0;
   double run_time;
   double mflops;
 	
@@ -165,11 +166,11 @@ int main(int argc, char **argv) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank_id);
   MPI_Comm_size(MPI_COMM_WORLD, &num_ranks);
 
-  char do_tanspose = FALSE;
+  char do_transpose = FALSE;
 
   if (argc > 1) {
     if ( !(strcmp("-t", argv[1])) || !(strcmp("--transpose", argv[1])) )
-      do_tanspose = TRUE;
+      do_transpose = TRUE;
   }
 
 
@@ -178,6 +179,10 @@ int main(int argc, char **argv) {
 cali_mpi_init();
 #endif
 
+  if (num_ranks == 1) {
+    fprintf(stderr,"serial not supported\n");
+    return 1;
+  }
   rows_per_rank = ORDER/(num_ranks-1); // TODO make it work with one process
 
   if (rank_id == 0) { // master
@@ -200,7 +205,7 @@ cali_mpi_init();
       C[j] = 0.0;
     }
 
-    if(do_tanspose) {
+    if(do_transpose) {
       printf("Transposing B matrix\n");
       transpose_mat(B);
     }
@@ -232,35 +237,31 @@ cali_mpi_init();
 CALI_MARK_BEGIN("master_mult");
 #endif
 
-          if(do_tanspose) {
-
-    //multiply
-    for(i = ORDER-master_rows; i < ORDER; i++){
-      for(j = 0; j < ORDER; j++){
-        #pragma simd
-        for(k = 0; k < ORDER; k++) {
-            C[i*ORDER+j] += A[i*ORDER+k] * B[j*ORDER+k];
+    if(do_transpose) {
+      //multiply
+      for(i = ORDER-master_rows; i < ORDER; i++){
+        for(j = 0; j < ORDER; j++){
+          #pragma simd
+          for(k = 0; k < ORDER; k++) {
+              C[i*ORDER+j] += A[i*ORDER+k] * B[j*ORDER+k];
+          }
         }
       }
-    }
-
-          } else {
-
-    for(i = ORDER-master_rows; i < ORDER; i++){
-      for(j = 0; j < ORDER; j++){
-        #pragma simd
-        for(k = 0; k < ORDER; k++) {
-            C[i*ORDER+j] += A[i*ORDER+k] * B[k*ORDER+j];
+    } else {
+      for(i = ORDER-master_rows; i < ORDER; i++){
+        for(j = 0; j < ORDER; j++){
+          #pragma simd
+          for(k = 0; k < ORDER; k++) {
+              C[i*ORDER+j] += A[i*ORDER+k] * B[k*ORDER+j];
+          }
         }
       }
-    }
-
-          } //transpose
-
+    } //transpose
 
 #ifdef USE_CALI
 CALI_MARK_END("master_mult");
 #endif
+
     //recieve
     for(r = 1; r < num_ranks; r++){
       MPI_Recv(&C[(r-1)*rows_per_rank*ORDER], rows_per_rank*ORDER, MPI_DOUBLE, r, 2, MPI_COMM_WORLD, &status);
@@ -285,7 +286,7 @@ CALI_MARK_END("master_mult");
     // Check results
     if (! correct) {
       fprintf(stderr,"\n Errors in multiplication\n");
-      err = 1;
+      rc = 1;
     } else {
       fprintf(stdout,"\n SUCCESS : results match\n");
     }
@@ -312,32 +313,29 @@ CALI_MARK_END("master_mult");
 CALI_MARK_BEGIN("worker_mult");
 #endif
 
-          if(do_tanspose) {
-
-    //multiply
-    for(i = 0; i < rows_per_rank; i++){
-      for(j = 0; j < ORDER; j++){
-        #pragma simd
-        #pragma ivdep
-        for (k=0; k<ORDER; k++){
-          out_buffer[i*ORDER+j] += A[i*ORDER+k] * B[j*ORDER+k];
+    if(do_transpose) {
+      //multiply
+      for(i = 0; i < rows_per_rank; i++){
+        for(j = 0; j < ORDER; j++){
+          #pragma simd
+          #pragma ivdep
+          for (k=0; k<ORDER; k++){
+            out_buffer[i*ORDER+j] += A[i*ORDER+k] * B[j*ORDER+k];
+          }
         }
       }
-    }
-
-          } else {
-
-    for(i = 0; i < rows_per_rank; i++){
-      for(j = 0; j < ORDER; j++){
-        #pragma simd
-        #pragma ivdep
-        for (k=0; k<ORDER; k++){
-          out_buffer[i*ORDER+j] += A[i*ORDER+k] * B[k*ORDER+j];
+    } else {
+      for(i = 0; i < rows_per_rank; i++){
+        for(j = 0; j < ORDER; j++){
+          #pragma simd
+          #pragma ivdep
+          for (k=0; k<ORDER; k++){
+            out_buffer[i*ORDER+j] += A[i*ORDER+k] * B[k*ORDER+j];
+          }
         }
       }
-    }
 
-          } // tranpose
+    } // tranpose
 
 
 #ifdef USE_CALI
@@ -352,12 +350,10 @@ CALI_MARK_END("worker_mult");
     free(out_buffer);
     free(A);
     free(B);
-
   }
 
   MPI_Finalize();
 
-  return 0;
-
+  return rc;
 }
 
