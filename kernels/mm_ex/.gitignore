@@ -3,12 +3,14 @@
 mm
 mm_foo
 mm_mpi
+mm_seq
 *.err
 *.json
 *.openss
 core*
 .tau/
 *.txt
+cali_*
 
 # Prerequisites
 *.d
