@@ -25,7 +25,9 @@
 IMPLICIT NONE
 !     .. Parameters ..
 INTEGER N
-PARAMETER (N = 50)
+PARAMETER (N = 5000)
+LOGICAL OUTPUT 
+PARAMETER (OUTPUT = .FALSE.)
 INTEGER LDA, LDZ
 PARAMETER (LDA = N, LDZ = N)
 INTEGER LWMAX
@@ -69,6 +71,7 @@ END INTERFACE
 !
 !     .. Intrinsic Functions ..
 INTRINSIC INT, MIN
+
 !
 !     .. Executable Statements ..
 !     Populate matrix with random values
@@ -113,16 +116,20 @@ ENDIF
 !
 !     Print the number of eigenvalues found.
 !
-WRITE (*, '(/A,I2)') ' The total number of eigenvalues found:', m
+WRITE (*, '(/A,I5)') ' Matrix dimension:', N
+WRITE (*, '(/A,I5)') ' The total number of eigenvalues found:', m
 !
 !     Print eigenvalues.
 !
-CALL PRINT_RMATRIX('Selected eigenvalues', 1, m, w, 1, Maxnum = 12)
+ 
+IF (OUTPUT .EQV. .TRUE.) THEN
+      CALL PRINT_RMATRIX('Selected eigenvalues', 1, m, w, 1, Maxnum = 12)
 !
 !     Print eigenvectors.
 !
-CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
+      CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
         & z, LDZ, Maxnum = 12)
+ENDIF
 END
 !
 !     End of ZHEEVR Example.

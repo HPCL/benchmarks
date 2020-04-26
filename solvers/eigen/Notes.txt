@@ -1,0 +1,24 @@
+This actually works:
+cmake  -DBLA_VENDOR=OpenBLAS -DCMAKE_PREFIX_PATH=$OPENBLAS_DIR ..
+
+In a perfect world, the same CMake file would work with MKL by using one of the following:
+cmake  -DBLA_VENDOR=Intel10_64lp_seq ..
+
+
+However, this is not a perfect world, so we must instead embark on the following adventure:
+
+
+https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+
+# OpenMP threading
+ifort -g -O2 -i8  -o bin/diag-intel-omp.exe ../src/diag.f90 \
+  -i8 -I${MKLROOT}/include/intel64/ilp64 -mkl=parallel  \
+ ${MKLROOT}/lib/intel64/libmkl_blas95_ilp64.a ${MKLROOT}/lib/intel64/libmkl_lapack95_ilp64.a -liomp5 -lpthread -lm -ldl
+
+# TBB threading
+ifort -g -O2 -i8  -o ../bin/diag-intel-tbb.exe ../src/diag.f90 \
+ -i8 -I${MKLROOT}/include/intel64/ilp64 -mkl=parallel \
+  ${MKLROOT}/lib/intel64/libmkl_blas95_ilp64.a ${MKLROOT}/lib/intel64/libmkl_lapack95_ilp64.a -ltbb -lstdc++ -lpthread -lm -ldl 
+
+# Sequential
+ifort -g -O2 -i8  -o ../bin/diag-intel-seq.exe ../src/diag.f90 ${MKLROOT}/lib/intel64/libmkl_blas95_ilp64.a ${MKLROOT}/lib/intel64/libmkl_lapack95_ilp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_ilp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -ldl

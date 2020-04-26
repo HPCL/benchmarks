@@ -15,6 +15,7 @@ if(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
     set(bounds "-C")
 endif()
 
+# https://cmake.org/cmake/help/latest/module/FindBLAS.html
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 
