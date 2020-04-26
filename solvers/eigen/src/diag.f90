@@ -25,7 +25,7 @@
 IMPLICIT NONE
 !     .. Parameters ..
 INTEGER N
-PARAMETER (N = 5)
+PARAMETER (N = 50)
 INTEGER LDA, LDZ
 PARAMETER (LDA = N, LDZ = N)
 INTEGER LWMAX
@@ -34,6 +34,7 @@ PARAMETER (LWMAX = 1000000)
 !     .. Local Scalars ..
 INTEGER info, lwork, lrwork, liwork, il, iu, m
 DOUBLE PRECISION abstol, vl, vu
+CHARACTER(len=32) :: arg
 !
 !     .. Local Arrays ..
 INTEGER isuppz(N), iwork(LWMAX)
@@ -70,6 +71,7 @@ END INTERFACE
 INTRINSIC INT, MIN
 !
 !     .. Executable Statements ..
+!     Populate matrix with random values
 !CALL RANDOM_INIT(.true., .true.)
 CALL RANDOM_SEED()
 CALL RANDOM_NUMBER(ar)
