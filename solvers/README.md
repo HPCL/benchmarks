@@ -1,3 +1,5 @@
 # Solvers
 
-List and briefly describe each new solver here.
+## Eigensolvers
+
+LAPACK eigensolvers that compute all eigenvalues and eigenvectors. Specific focus on double-precision complex matrices of small to medium size (up to 5000). 
