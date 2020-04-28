@@ -39,6 +39,7 @@ PARAMETER (LWMAX = 1000000)
 INTEGER info, lwork, lrwork, liwork, il, iu, m
 DOUBLE PRECISION abstol, vl, vu
 CHARACTER(len=32) :: arg
+double precision :: ostart, oend
 !
 !     .. Local Arrays ..
 INTEGER isuppz(N), iwork(LWMAX)
@@ -94,6 +95,7 @@ vu = 5.0
 lwork = -1
 lrwork = -1
 liwork = -1
+ostart = omp_get_wtime()
 !     Compute all eigenvalues and eigenvectors (indicated by the second
 !     parameter (RANGE='All')
 CALL ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
@@ -108,6 +110,7 @@ liwork = MIN(LWMAX, iwork(1))
 CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
         & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
         & info)
+oend = omp_get_wtime()
 !
 !     Check for convergence.
 !
@@ -120,6 +123,7 @@ ENDIF
 !
 WRITE (*, '(/A,I5)') ' Matrix dimension:', N
 WRITE (*, '(/A,I5)') ' The total number of eigenvalues found:', m
+WRITE (*, '(/A,F5.2)') 'OpenMP Walltime for solver:', oend-ostart
 !
 !     Print eigenvalues.
 !
