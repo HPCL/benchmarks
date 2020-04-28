@@ -1,3 +1,4 @@
+use omp_lib
 !=================================================================
 !
 !  ZHEEVR Example. (based on the Intel MKL example)
@@ -37,6 +38,7 @@ PARAMETER (LWMAX = 1000000)
 INTEGER info, lwork, lrwork, liwork, il, iu, m
 DOUBLE PRECISION abstol, vl, vu
 CHARACTER(len=32) :: arg
+DOUBLE PRECISION :: tstart, tend
 !
 !     .. Local Arrays ..
 INTEGER isuppz(N), iwork(LWMAX)
@@ -92,6 +94,8 @@ vu = 5.0
 lwork = -1
 lrwork = -1
 liwork = -1
+
+tstart = omp_get_wtime()
 !     Compute all eigenvalues and eigenvectors (indicated by the second
 !     parameter (RANGE='All')
 CALL ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
@@ -113,11 +117,14 @@ IF (info>0) THEN
     WRITE (*, *) 'The algorithm failed to compute eigenvalues.'
     STOP
 ENDIF
+tend = omp_get_wtime()
+
 !
 !     Print the number of eigenvalues found.
 !
 WRITE (*, '(/A,I5)') ' Matrix dimension:', N
 WRITE (*, '(/A,I5)') ' The total number of eigenvalues found:', m
+WRITE (*, '(/A,F5.2)') ' Time:', tend-tstart
 !
 !     Print eigenvalues.
 !
