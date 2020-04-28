@@ -30,6 +30,9 @@ INTEGER N
 PARAMETER (N = 5000)
 LOGICAL OUTPUT 
 PARAMETER (OUTPUT = .FALSE.)
+! Version indicates which algorithm to use 1=ZHEEV, 2=ZHEEVR
+INTEGER VERSION
+PARAMETER (VERSION = 1)
 INTEGER LDA, LDZ
 PARAMETER (LDA = N, LDZ = N)
 INTEGER LWMAX
@@ -49,6 +52,7 @@ EQUIVALENCE(ar,a)
 
 !
 !     .. External Subroutines ..
+EXTERNAL ZHEEV
 EXTERNAL ZHEEVR
 !
 !     .. Auxillary Subroutines ..
@@ -82,7 +86,10 @@ INTRINSIC INT, MIN
 CALL RANDOM_SEED()
 CALL RANDOM_NUMBER(ar)
 
-WRITE (*, *) 'ZHEEVR Example Program Results'
+IF (OUTPUT .EQV. .TRUE.) THEN
+  WRITE (*, *) 'ZHEEVR Example Program Results'
+ENDIF
+
 !     Negative ABSTOL means using the default value
 abstol = -1.0
 !     Set VL, VU to compute eigenvalues in half-open (VL,VU] interval,
@@ -98,20 +105,29 @@ liwork = -1
 
 ompthreads = omp_get_max_threads()
 tstart = omp_get_wtime()
-!     Compute all eigenvalues and eigenvectors (indicated by the second
-!     parameter (RANGE='All')
-CALL ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
-        & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
-        & info)
-lwork = MIN(LWMAX, INT(work(1)))
-lrwork = MIN(LWMAX, INT(rwork(1)))
-liwork = MIN(LWMAX, iwork(1))
-!
-!     Solve eigenproblem.
-!
-CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
-        & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
-        & info)
+
+IF (VERSION == 1) THEN
+  !     Compute all eigenvalues and eigenvectors
+  CALL ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
+  lwork = MIN( LWMAX, INT( work( 1 ) ) )
+  !     Solve eigenproblem.
+  CALL ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
+ELSE
+  !     Compute all eigenvalues and eigenvectors (indicated by the second
+  !     parameter (RANGE='All')
+  CALL ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+          & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
+          & info)
+  lwork = MIN(LWMAX, INT(work(1)))
+  lrwork = MIN(LWMAX, INT(rwork(1)))
+  liwork = MIN(LWMAX, iwork(1))
+  !
+  !     Solve eigenproblem.
+  !
+  CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+          & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
+          & info)
+ENDIF
 !
 !     Check for convergence.
 !
@@ -124,7 +140,7 @@ tend = omp_get_wtime()
 !
 !     Print the number of eigenvalues found.
 !
-WRITE (*, '(/A,I2,A,F5.2)', advance="no") 'threads=', ompthreads, ',time=', tend-tstart
+WRITE (*, '(/A,I2,A,F6.2)', advance="no") 'threads=', ompthreads, ',time=', tend-tstart
 WRITE (*, '(A,I5)', advance="no") ',N=', N
 WRITE (*, '(A,I5)') ',number_eigenvalues_found=', m
 !
