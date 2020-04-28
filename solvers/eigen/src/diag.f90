@@ -95,7 +95,6 @@ vu = 5.0
 lwork = -1
 lrwork = -1
 liwork = -1
-<<<<<<< HEAD
 
 tstart = omp_get_wtime()
 !     Compute all eigenvalues and eigenvectors (indicated by the second
@@ -127,7 +126,7 @@ tend = omp_get_wtime()
 !
 WRITE (*, '(/A,I5)') ' Matrix dimension:', N
 WRITE (*, '(/A,I5)') ' The total number of eigenvalues found:', m
-WRITE (*, '(/A,F5.2)') ' Time:', tend-tstart
+WRITE (*, '(/A,F5.2)') ' Time: ', tend-tstart
 !
 !     Print eigenvalues.
 !
