@@ -23,6 +23,7 @@ use omp_lib
 !
 !  =============================================================================
 !
+use omp_lib
 IMPLICIT NONE
 !     .. Parameters ..
 INTEGER N
@@ -94,6 +95,7 @@ vu = 5.0
 lwork = -1
 lrwork = -1
 liwork = -1
+<<<<<<< HEAD
 
 tstart = omp_get_wtime()
 !     Compute all eigenvalues and eigenvectors (indicated by the second
@@ -110,6 +112,7 @@ liwork = MIN(LWMAX, iwork(1))
 CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
         & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
         & info)
+oend = omp_get_wtime()
 !
 !     Check for convergence.
 !
@@ -137,7 +140,7 @@ IF (OUTPUT .EQV. .TRUE.) THEN
       CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
         & z, LDZ, Maxnum = 12)
 ENDIF
-END
+ENDPROGRAM
 !
 !     End of ZHEEVR Example.
 !
