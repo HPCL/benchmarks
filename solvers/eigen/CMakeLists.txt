@@ -3,16 +3,21 @@ project(diag.exe Fortran)
 
 set (CMAKE_BUILD_TYPE RELWITHDEBINFO)
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-    set(dialect "-fdefault-integer-8 -ffree-form -std=f2008 -fimplicit-none")
+    set(dialect "-fopenmp -fdefault-integer-8 -ffree-form -std=f2008 -fimplicit-none")
     set(bounds "-fbounds-check")
 endif()
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel")
-    set(dialect "-g -O2 -i8 -stand f08 -free -implicitnone")
+    set(dialect "-qopenmp -g -O2 -i8 -stand f08 -free -implicitnone")
     set(bounds "-check bounds")
 endif()
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "PGI")
     set(dialect "-g -O2 -Mfreeform -Mdclchk -Mstandard -Mallocatable=03")
     set(bounds "-C")
+endif()
+
+find_package(OpenMP REQUIRED)
+if (OPENMP_FOUND)
+    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} ${OpenMP_Fortran_FLAGS}")
 endif()
 
 # https://cmake.org/cmake/help/latest/module/FindBLAS.html
