@@ -1,3 +1,4 @@
+PROGRAM Diag
 !=================================================================
 !
 !  ZHEEVR Example. (based on the Intel MKL example)
@@ -22,6 +23,7 @@
 !
 !  =============================================================================
 !
+use omp_lib
 IMPLICIT NONE
 !     .. Parameters ..
 INTEGER N
@@ -130,7 +132,7 @@ IF (OUTPUT .EQV. .TRUE.) THEN
       CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
         & z, LDZ, Maxnum = 12)
 ENDIF
-END
+ENDPROGRAM
 !
 !     End of ZHEEVR Example.
 !
