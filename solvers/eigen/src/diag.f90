@@ -1,4 +1,4 @@
-use omp_lib
+program main
 !=================================================================
 !
 !  ZHEEVR Example. (based on the Intel MKL example)
@@ -36,9 +36,8 @@ INTEGER LWMAX
 PARAMETER (LWMAX = 1000000)
 !
 !     .. Local Scalars ..
-INTEGER info, lwork, lrwork, liwork, il, iu, m
+INTEGER info, lwork, lrwork, liwork, il, iu, m, ompthreads
 DOUBLE PRECISION abstol, vl, vu
-CHARACTER(len=32) :: arg
 DOUBLE PRECISION :: tstart, tend
 !
 !     .. Local Arrays ..
@@ -77,6 +76,7 @@ INTRINSIC INT, MIN
 
 !
 !     .. Executable Statements ..
+!
 !     Populate matrix with random values
 !CALL RANDOM_INIT(.true., .true.)
 CALL RANDOM_SEED()
@@ -96,6 +96,7 @@ lwork = -1
 lrwork = -1
 liwork = -1
 
+ompthreads = omp_get_max_threads()
 tstart = omp_get_wtime()
 !     Compute all eigenvalues and eigenvectors (indicated by the second
 !     parameter (RANGE='All')
@@ -111,7 +112,6 @@ liwork = MIN(LWMAX, iwork(1))
 CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
         & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
         & info)
-oend = omp_get_wtime()
 !
 !     Check for convergence.
 !
@@ -124,9 +124,9 @@ tend = omp_get_wtime()
 !
 !     Print the number of eigenvalues found.
 !
-WRITE (*, '(/A,I5)') ' Matrix dimension:', N
-WRITE (*, '(/A,I5)') ' The total number of eigenvalues found:', m
-WRITE (*, '(/A,F5.2)') ' Time: ', tend-tstart
+WRITE (*, '(/A,I2,A,F5.2)', advance="no") 'threads=', ompthreads, ',time=', tend-tstart
+WRITE (*, '(A,I5)', advance="no") ',N=', N
+WRITE (*, '(A,I5)') ',number_eigenvalues_found=', m
 !
 !     Print eigenvalues.
 !
@@ -139,7 +139,7 @@ IF (OUTPUT .EQV. .TRUE.) THEN
       CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
         & z, LDZ, Maxnum = 12)
 ENDIF
-ENDPROGRAM
+END
 !
 !     End of ZHEEVR Example.
 !
