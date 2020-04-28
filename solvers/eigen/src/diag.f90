@@ -24,71 +24,82 @@ program main
 !  =============================================================================
 !
 use omp_lib
-IMPLICIT NONE
+implicit none
 !     .. Parameters ..
-INTEGER N
-PARAMETER (N = 5000)
-LOGICAL OUTPUT 
-PARAMETER (OUTPUT = .FALSE.)
-! Version indicates which algorithm to use 1=ZHEEV, 2=ZHEEVR
-INTEGER VERSION
-PARAMETER (VERSION = 1)
-INTEGER LDA, LDZ
-PARAMETER (LDA = N, LDZ = N)
-INTEGER LWMAX
-PARAMETER (LWMAX = 1000000)
+integer N
+parameter (N = 5000)
+logical OUTPUT 
+parameter (OUTPUT = .false.)
+! Version indicates which algorithm to use 1=ZHEEV, 2=ZHEEVD, 3=ZHEEVR, 4=ZHEEVX
+integer VERSION
+integer LDA, LDZ
+parameter (LDA = N, LDZ = N)
+integer LWMAX
+parameter (LWMAX = 1000000)
 !
 !     .. Local Scalars ..
-INTEGER info, lwork, lrwork, liwork, il, iu, m, ompthreads
-DOUBLE PRECISION abstol, vl, vu
-DOUBLE PRECISION :: tstart, tend
+integer i, info, lwork, lrwork, liwork, il, iu, m, ompthreads
+double precision abstol, vl, vu
+double precision :: tstart, tend
+character(len=2) :: arg
+
 !
 !     .. Local Arrays ..
-INTEGER isuppz(N), iwork(LWMAX)
-DOUBLE PRECISION w(N), rwork(LWMAX)
-DOUBLE PRECISION ar(LDA*2, N*2)
-DOUBLE COMPLEX a(LDA, N), z(LDZ, N), work(LWMAX)
-EQUIVALENCE(ar,a)
+integer isuppz(N), iwork(LWMAX), ifail(N)
+double precision w(N), rwork(LWMAX)
+double precision ar(LDA*2, N*2)
+double complex a(LDA, N), z(LDZ, N), work(LWMAX)
+equivalence(ar,a)
 
 !
 !     .. External Subroutines ..
-EXTERNAL ZHEEV
-EXTERNAL ZHEEVR
+external ZHEEV
+external ZHEEVX
+external ZHEEVD
+external ZHEEVR
 !
 !     .. Auxillary Subroutines ..
-INTERFACE
-    SUBROUTINE PRINT_MATRIX (Desc, M, N, A, Lda, Maxnum)
-        CHARACTER*(*), INTENT(IN) :: Desc
-        INTEGER, INTENT (IN) :: M
-        INTEGER, INTENT (IN) :: N
-        DOUBLE COMPLEX, INTENT(IN) :: A(Lda, *)
-        INTEGER, INTENT(IN) :: Lda
-        INTEGER, INTENT(IN), OPTIONAL :: Maxnum
-    END SUBROUTINE PRINT_MATRIX
-    SUBROUTINE PRINT_RMATRIX (Desc, M, N, R, Lda, Maxnum)
-        CHARACTER*(*), INTENT(IN) :: Desc
-        INTEGER, INTENT (IN) :: M
-        INTEGER, INTENT (IN) :: N
-        DOUBLE PRECISION, INTENT(IN) :: R(Lda, *)
-        INTEGER, INTENT(IN) :: Lda
-        INTEGER, INTENT(IN), OPTIONAL :: Maxnum
-    END SUBROUTINE PRINT_RMATRIX
-END INTERFACE
+interface
+    subroutine PRINT_MATRIX (Desc, M, N, A, Lda, Maxnum)
+        character*(*), intent(in) :: Desc
+        integer, intent (in) :: M
+        integer, intent (in) :: N
+        double complex, intent(in) :: A(Lda, *)
+        integer, intent(in) :: Lda
+        integer, intent(in), optional :: Maxnum
+    end subroutine PRINT_MATRIX
+    subroutine PRINT_RMATRIX (Desc, M, N, R, Lda, Maxnum)
+        character*(*), intent(in) :: Desc
+        integer, intent (in) :: M
+        integer, intent (in) :: N
+        double precision, intent(in) :: R(Lda, *)
+        integer, intent(in) :: Lda
+        integer, intent(in), optional :: Maxnum
+    end subroutine PRINT_RMATRIX
+end interface
 !
 !     .. Intrinsic Functions ..
-INTRINSIC INT, MIN
+intrinsic INT, MIN
 
 !
 !     .. Executable Statements ..
 !
 !     Populate matrix with random values
-!CALL RANDOM_INIT(.true., .true.)
-CALL RANDOM_SEED()
-CALL RANDOM_NUMBER(ar)
+call random_seed()
+call random_number(ar)
 
-IF (OUTPUT .EQV. .TRUE.) THEN
-  WRITE (*, *) 'ZHEEVR Example Program Results'
-ENDIF
+VERSION=3  ! default 
+
+call get_command_argument(1, arg)
+if (len_trim(arg) == 0) then 
+  VERSION=3
+else 
+  READ(arg,*)VERSION  
+endif
+
+if (OUTPUT .eqv. .true.) then
+  write (*, *) 'ZHEEVR Example Program Results'
+endif
 
 !     Negative ABSTOL means using the default value
 abstol = -1.0
@@ -106,16 +117,28 @@ liwork = -1
 ompthreads = omp_get_max_threads()
 tstart = omp_get_wtime()
 
-IF (VERSION == 1) THEN
-  !     Compute all eigenvalues and eigenvectors
-  CALL ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
+! Version indicates which algorithm to use 1=ZHEEV, 2=ZHEEVD, 3=ZHEEVR, 4=ZHEEVX
+if (VERSION == 1) then
+  !!     Compute all eigenvalues and eigenvectors using QR
+  call ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
   lwork = MIN( LWMAX, INT( work( 1 ) ) )
   !     Solve eigenproblem.
-  CALL ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
-ELSE
+  call ZHEEV( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, info)
+else if (VERSION == 2) then
+! Program computes all eigenvalues and eigenvectors of a complex Hermitian matrix A using divide and conquer algorithm,
+  call ZHEEVD( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, &
+              lrwork, iwork, liwork, info)
+      lwork = MIN( LWMAX, INT( work( 1 ) ) )
+      lrwork = MIN( LWMAX, INT( rwork( 1 ) ) )
+      liwork = MIN( LWMAX, iwork( 1 ) )
+!  *     Solve eigenproblem.  *
+  call ZHEEVD( 'Vectors', 'Lower', N, a, LDA, w, work, lwork, rwork, &
+              lrwork, iwork, liwork, info)
+else if (VERSION == 3) then
+! Relatively Robust Representation (RRR)
   !     Compute all eigenvalues and eigenvectors (indicated by the second
   !     parameter (RANGE='All')
-  CALL ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+  call ZHEEVR('Vectors', 'All', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
           & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
           & info)
   lwork = MIN(LWMAX, INT(work(1)))
@@ -124,38 +147,50 @@ ELSE
   !
   !     Solve eigenproblem.
   !
-  CALL ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+  call ZHEEVR('Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
           & m, w, z, LDZ, isuppz, work, lwork, rwork, lrwork, iwork, liwork, &
           & info)
-ENDIF
+else if (VERSION == 4) then
+!  QR iteration, expert
+  call ZHEEVX( 'Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+               m, w, z, LDZ, work, lwork, rwork, iwork, ifail, info) 
+  lwork = MIN( LWMAX, INT( work( 1 ) ) )
+  !     Solve eigenproblem.
+  call ZHEEVX( 'Vectors', 'Values', 'Lower', N, a, LDA, vl, vu, il, iu, abstol, &
+               m, w, z, LDZ, work, lwork, rwork, iwork, ifail, info) 
+endif
+
 !
 !     Check for convergence.
 !
-IF (info>0) THEN
-    WRITE (*, *) 'The algorithm failed to compute eigenvalues.'
+if (info>0) then
+    write (*, *) 'The algorithm failed to compute eigenvalues.'
     STOP
-ENDIF
+endif
 tend = omp_get_wtime()
 
 !
 !     Print the number of eigenvalues found.
 !
-WRITE (*, '(/A,I2,A,F6.2)', advance="no") 'threads=', ompthreads, ',time=', tend-tstart
-WRITE (*, '(A,I5)', advance="no") ',N=', N
-WRITE (*, '(A,I5)') ',number_eigenvalues_found=', m
+write (*, '(A,I1,A,I2,A,F6.2)', advance="no") 'alg=', VERSION, ',threads=', ompthreads, ',time=', tend-tstart
+write (*, '(A,I5)', advance="no") ',N=', N
+write (*, '(A,I5)') ',number_eigenvalues_found=', m
 !
 !     Print eigenvalues.
 !
  
-IF (OUTPUT .EQV. .TRUE.) THEN
-      CALL PRINT_RMATRIX('Selected eigenvalues', 1, m, w, 1, Maxnum = 12)
+if (OUTPUT .eqv. .true.) then
+  if (VERSION == 1 .or. VERSION == 2) then
+    m = N
+    z = a
+  endif
+  call PRINT_RMATRIX('Selected eigenvalues', 1, m, w, 1, Maxnum = 12)
 !
 !     Print eigenvectors.
 !
-      CALL PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, &
-        & z, LDZ, Maxnum = 12)
-ENDIF
-END
+  call PRINT_MATRIX('Selected eigenvectors (stored columnwise)', N, m, z, LDZ, Maxnum = 12)
+endif
+end
 !
 !     End of ZHEEVR Example.
 !
@@ -163,62 +198,62 @@ END
 !
 !     Auxiliary routine: printing a matrix.
 !
-SUBROUTINE PRINT_MATRIX(Desc, M, N, A, Lda, Maxnum)
-    IMPLICIT NONE
-    CHARACTER*(*), INTENT(IN) :: Desc
-    INTEGER, INTENT (IN) :: M
-    INTEGER, INTENT (IN) :: N
-    DOUBLE COMPLEX, INTENT(IN) :: A(Lda, *)
-    INTEGER, INTENT(IN) :: Lda
-    INTEGER, INTENT(IN), OPTIONAL :: Maxnum
+subroutine PRINT_MATRIX(Desc, M, N, A, Lda, Maxnum)
+    implicit none
+    character*(*), intent(in) :: Desc
+    integer, intent (in) :: M
+    integer, intent (in) :: N
+    double complex, intent(in) :: A(Lda, *)
+    integer, intent(in) :: Lda
+    integer, intent(in), optional :: Maxnum
     !
-    INTEGER i, j, Nprint
+    integer i, j, Nprint
     !
-    IF (PRESENT(Maxnum)) THEN
+    if (present(Maxnum)) then
         Nprint = Maxnum
-    ELSE
+    else
         Nprint = M
-    ENDIF
-    WRITE (*, *)
-    WRITE (*, *) Desc
-    DO i = 1, MIN(Nprint, M)
-        WRITE (*, 99001) (A(i, j), j = 1, N)
+    endif
+    write (*, *)
+    write (*, *) Desc
+    do i = 1, MIN(Nprint, M)
+        write (*, 99001) (A(i, j), j = 1, N)
         !
         99001    FORMAT (11(:, 1X, '(', F6.2, ',', F6.2, ')'))
-    ENDDO
-    IF (Nprint < M) THEN
-        WRITE (*, *) "..."
-    ENDIF
-END
+    enddo
+    if (Nprint < M) then
+        write (*, *) "..."
+    endif
+end
 
 !
 !     Auxiliary routine: printing a real matrix.
 !
-SUBROUTINE PRINT_RMATRIX(Desc, M, N, R, Lda, Maxnum)
-    IMPLICIT NONE
-    CHARACTER*(*), INTENT(IN) :: Desc
-    INTEGER, INTENT (IN) :: M
-    INTEGER, INTENT (IN) :: N
-    DOUBLE PRECISION, INTENT(IN) :: R(Lda, *)
-    INTEGER, INTENT(IN) :: Lda
-    INTEGER, INTENT(IN), OPTIONAL :: Maxnum
+subroutine PRINT_RMATRIX(Desc, M, N, R, Lda, Maxnum)
+    implicit none
+    character*(*), intent(in) :: Desc
+    integer, intent (in) :: M
+    integer, intent (in) :: N
+    double precision, intent(in) :: R(Lda, *)
+    integer, intent(in) :: Lda
+    integer, intent(in), optional :: Maxnum
     !
-    INTEGER i, j, Nprint
+    integer i, j, Nprint
     !
-    IF (PRESENT(Maxnum)) THEN
+    if (present(Maxnum)) then
         Nprint = Maxnum
-    ELSE
+    else
         Nprint = M
-    ENDIF
-    WRITE (*, *)
-    WRITE (*, *) Desc
-    DO i = 1, MIN(Nprint, M)
-        WRITE (*, 99001) (R(i, j), j = 1, N)
+    endif
+    write (*, *)
+    write (*, *) Desc
+    do i = 1, MIN(Nprint, M)
+        write (*, 99001) (R(i, j), j = 1, N)
         !
         99001    FORMAT (11(:, 1X, F6.2))
-    ENDDO
-    IF (Nprint < M) THEN
-        WRITE (*, *) "..."
-    ENDIF
-END
+    enddo
+    if (Nprint < M) then
+        write (*, *) "..."
+    endif
+end
 
