@@ -103,42 +103,47 @@ void test_L1() {
 
   // int order = 2000;
   int order = 64;
+  int exp_count = 0;
   size_t i,j,k,r;
+
+  int cache_line_order[] = {6,1,5,2,0,7,3,4};
 
   TYPE *A, *B, *C;
   matrix_init(&A, &B, &C, order);
 
-#ifdef USE_CALI
-CALI_MARK_BEGIN("cache_prep");
-#endif
-  // Load all matrices into the L2 cache
-  // fill L1 cache with the C matrix
-  transpose_mat(A, order);
-  transpose_mat(B, order);
-  transpose_mat(C, order);
+  for (exp_count = 0; exp_count < 100; exp_count++) {
+    #ifdef USE_CALI
+    CALI_MARK_BEGIN("cache_prep");
+    #endif
 
-#ifdef USE_CALI
-CALI_MARK_END("cache_prep");
-#endif
+      // Load all matrices into the L2 cache
+      // fill L1 cache with the C matrix
+      transpose_mat(A, order);
+      transpose_mat(B, order);
+      transpose_mat(C, order);
 
-#ifdef USE_CALI
-CALI_MARK_BEGIN("cache_test");
-#endif
-  for (int k = 0; k < 8; k++) {         // choose element in the cache line
-    for (int i = 0; i < order; i+=8) {  // choose the row
-      for (int j = 0; j < 8; j++) {     // choose the  cache line column
+    #ifdef USE_CALI
+    CALI_MARK_END("cache_prep");
+    #endif
 
-        int index_1 = i*order + j*8 + k; 
-        int index_2 = i*order + j*8 + 3;
-        A[index_1] = A[index_1] + A[index_2];
+    #ifdef USE_CALI
+    CALI_MARK_BEGIN("cache_test");
+    #endif
+      for (int k = 0; k < 8; k++) {         // choose element in the cache line
+        for (int i = 0; i < order; i+=8) {  // choose the row
+          for (int j = 0; j < 8; j++) {     // choose the  cache line column
 
+            int index_1 = i*order + cache_line_order[j]*8 + k; 
+            int index_2 = i*order + cache_line_order[j]*8 + 3;
+            A[index_1] = A[index_1] + A[index_2];
+
+          }
+        }
       }
-    }
+    #ifdef USE_CALI
+    CALI_MARK_END("cache_test");
+    #endif
   }
-#ifdef USE_CALI
-CALI_MARK_END("cache_test");
-#endif
-
   // for(i = 0; i < order; i++){
   //   for(j = 0; j < order; j++){
   //     for(k = 0; k < order; k++) {
