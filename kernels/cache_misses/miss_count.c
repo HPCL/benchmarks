@@ -52,7 +52,7 @@ void test_L1();
 
 void get_input(int argc, char **argv, struct Inputs* input);
 void matrix_init(TYPE** A, TYPE** B, TYPE** C, size_t row_len);
-void transpose_mat(TYPE* A);
+void transpose_mat(TYPE* A, int order);
 void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size);
 void print_mat(TYPE* C);
 
@@ -71,8 +71,13 @@ int main(int argc, char **argv) {
 
   start = omp_get_wtime();
 
+
 #ifdef USE_CALI
-CALI_MARK_BEGIN("full");
+cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
+#pragma omp parallel
+{
+cali_set_int(thread_attr, omp_get_thread_num());
+}
 #endif
 
 #pragma omp parallel
@@ -80,9 +85,6 @@ CALI_MARK_BEGIN("full");
   test_L1();
 }
 
-#ifdef USE_CALI
-CALI_MARK_END("full");
-#endif
 
   end = omp_get_wtime();
 
@@ -94,24 +96,56 @@ CALI_MARK_END("full");
 
 // the square matrices are ORDERxORDER
 // For Skyake the L1 cache is 32k = 4000 doubles
-// 63*63 = 3969 doubles 
+//    - so I'm assuming it is divisible by the cache line
+//    - 64 bytes = 8 doubles
+// 64*64 = 4096 doubles 
 void test_L1() {
 
-  int order = 2000;
-  // int order = 63;
+  // int order = 2000;
+  int order = 64;
   size_t i,j,k,r;
 
   TYPE *A, *B, *C;
   matrix_init(&A, &B, &C, order);
 
+#ifdef USE_CALI
+CALI_MARK_BEGIN("cache_prep");
+#endif
+  // Load all matrices into the L2 cache
+  // fill L1 cache with the C matrix
+  transpose_mat(A, order);
+  transpose_mat(B, order);
+  transpose_mat(C, order);
 
-  for(i = 0; i < order; i++){
-    for(j = 0; j < order; j++){
-      for(k = 0; k < order; k++) {
-        C[i*order+j] += A[i*order+k] * B[j*order+k];
+#ifdef USE_CALI
+CALI_MARK_END("cache_prep");
+#endif
+
+#ifdef USE_CALI
+CALI_MARK_BEGIN("cache_test");
+#endif
+  for (int k = 0; k < 8; k++) {         // choose element in the cache line
+    for (int i = 0; i < order; i+=8) {  // choose the row
+      for (int j = 0; j < 8; j++) {     // choose the  cache line column
+
+        int index_1 = i*order + j*8 + k; 
+        int index_2 = i*order + j*8 + 3;
+        A[index_1] = A[index_1] + A[index_2];
+
       }
     }
   }
+#ifdef USE_CALI
+CALI_MARK_END("cache_test");
+#endif
+
+  // for(i = 0; i < order; i++){
+  //   for(j = 0; j < order; j++){
+  //     for(k = 0; k < order; k++) {
+  //       C[i*order+j] += A[i*order+k] * B[j*order+k];
+  //     }
+  //   }
+  // }
 
   matrix_free(A,B,C,order);
 
@@ -181,14 +215,14 @@ void matrix_init(TYPE** A, TYPE** B, TYPE** C, size_t row_len) {
  
 }
 
-void transpose_mat(TYPE* A) {
+void transpose_mat(TYPE* A, int order) {
 
   TYPE temp;
-  for (int i=1; i<ORDER; i++) {
-    for (int j=i; j<ORDER; j++) {
-      temp = A[i*ORDER+j];
-      A[i*ORDER+j]=A[j*ORDER+i];
-      A[j*ORDER+i]=temp;
+  for (int i=1; i<order; i++) {
+    for (int j=i; j<order; j++) {
+      temp = A[i*order+j];
+      A[i*order+j]=A[j*order+i];
+      A[j*order+i]=temp;
     }
   }
 }
