@@ -30,6 +30,13 @@
 #define NUM_NEIGHBORS 9
 #define TEMP_ROWS     3
 
+#elif STENCIL_TYPE == 3
+#define NUM_NEIGHBORS 17
+#define TEMP_ROWS     5
+
+#elif STENCIL_TYPE == 4
+#define NUM_NEIGHBORS 81
+#define TEMP_ROWS     5
 
 #endif
 

@@ -13,6 +13,10 @@
 #include <caliper/cali.h>
 #endif
 
+#ifdef USE_LIKWID
+#include <likwid-marker.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
@@ -208,6 +212,10 @@ CALI_CXX_MARK_FUNCTION;
 CALI_MARK_BEGIN("computation");
 #endif
 
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("computation");
+#endif
+
   #pragma omp for 
   for (_x = 0; _x < x_size; _x++) {
 
@@ -222,24 +230,25 @@ CALI_MARK_BEGIN("computation");
     }
 
     // actually do some computation
+    #pragma omp simd
     for (_y = 0; _y < y_size; _y++) {
 
       get_neighbors(x_size, y_size, _x, _y, neighbors);
-
+      #pragma unroll
       for(n = 0; n < NUM_NEIGHBORS; n++) {
         ACCESS_MESH(temp_mesh, _x, _y, avg) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg);
       }
       ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
-
+      #pragma unroll
       for(n = 0; n < NUM_NEIGHBORS; n++) {
         ACCESS_MESH(temp_mesh, _x, _y, sum) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)/NUM_NEIGHBORS;
       }
-
+      #pragma unroll
       for(n = 0; n < NUM_NEIGHBORS; n++){
         dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
         ACCESS_MESH(temp_mesh, _x, _y, pde) += (-2*dt2 * ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], pde)) / ((dx2 + 1.0) * C);
       }
-
+      #pragma unroll
       for(n = 0; n < NUM_NEIGHBORS; n++){
         dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
         ACCESS_MESH(temp_mesh, _x, _y, dep) += (ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg)*dt2 * \
@@ -252,6 +261,10 @@ CALI_MARK_BEGIN("computation");
 #ifdef USE_CALI
 CALI_MARK_END("computation");
 #endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("computation");
+#endif
+
   } // parallel region
 
 } // do time step
@@ -382,7 +395,7 @@ CALI_CXX_MARK_FUNCTION;
   double wall_free_start, wall_free_end;
 
   int num_thr;
-  omp_set_num_threads(4);
+  //omp_set_num_threads(4);
   #pragma omp parallel
   {
     if(omp_get_thread_num()==0)
@@ -490,11 +503,19 @@ cali_set_int(thread_attr, omp_get_thread_num());
 }
 #endif
 
+#ifdef USE_LIKWID
+LIKWID_MARKER_INIT;
+#endif
+
   int err = FALSE;
 
   // err = err | test_small_mesh();
   // printf("\n\n");
   err = err | run_custom_mesh(X_SIZE, Y_SIZE, TIME, STEP, TIME_STOP);
+
+#ifdef USE_LIKWID
+LIKWID_MARKER_CLOSE;
+#endif
 
   return err;
 }
