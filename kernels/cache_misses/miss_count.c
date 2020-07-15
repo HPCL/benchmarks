@@ -203,9 +203,14 @@ void get_input(int argc, char **argv, struct Inputs* input) {
 void matrix_init(TYPE** A, TYPE** B, TYPE** C, size_t row_len) {
   size_t i, j;
 
-  (*A) = (TYPE*)malloc(row_len*row_len*sizeof(TYPE));
-  (*B) = (TYPE*)malloc(row_len*row_len*sizeof(TYPE));
-  (*C) = (TYPE*)malloc(row_len*row_len*sizeof(TYPE));
+  if( ((row_len*row_len) % 64) != 0 ) {
+    printf("ERROR aligning memory; make sure size is multiple of 64 bytes.\n");
+    exit(1);
+  }
+
+  (*A) = (TYPE*)aligned_alloc(64, row_len*row_len*sizeof(TYPE));
+  (*B) = (TYPE*)aligned_alloc(64, row_len*row_len*sizeof(TYPE));
+  (*C) = (TYPE*)aligned_alloc(64, row_len*row_len*sizeof(TYPE));
 
   if( ((*A) == NULL) || ((*B) == NULL) || ((*C) == NULL) ) {
     printf("ERROR allocating memory\n");

@@ -15,7 +15,7 @@ CC=icc
 ICC=1
 endif
 
-#USE_CALI=1
+USE_CALI=1
 #USE_SIMD=1
 
 INC =
@@ -66,7 +66,7 @@ endif
 all: miss_count
 
 miss_count: miss_count.c
-	${CC} ${OPT} -g -o miss_count ${INC} miss_count.c ${LIB} -fopenmp	
+	${CC} ${OPT} -std=c11 -g -o miss_count ${INC} miss_count.c ${LIB} -fopenmp	
 
 .PHONY: test
 test: miss_count
