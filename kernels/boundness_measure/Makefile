@@ -15,7 +15,7 @@ CC=icc
 ICC=1
 endif
 
-#USE_CALI=1
+USE_CALI=1
 #USE_SIMD=1
 
 INC =
@@ -62,6 +62,8 @@ ifdef USE_CALI
   LIB  += -lcaliper
 endif
 
+
+# OPT += -qopt-streaming-stores=never
 
 all: measure_bounds
 

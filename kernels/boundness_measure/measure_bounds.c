@@ -39,8 +39,9 @@
 
 
 struct Inputs {
-   char  cache_level;
-   int   threads;
+   char    cache_level; // which cache level to focus on
+   size_t  threads;     // number of threads to simultaneously execute the benchmark
+   size_t  flops;       // number of flops per iteration (divide by 8 for arithmetic intensity)
 };
 
 
@@ -48,7 +49,7 @@ void test_boundness(struct Inputs* input);
 
 void get_input(int argc, char **argv, struct Inputs* input);
 void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size);
-void fill_cache(TYPE* A, int size);
+void fill_cache(TYPE* A, size_t size);
 void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size);
 void print_mat(TYPE* C);
 
@@ -76,7 +77,10 @@ cali_set_int(thread_attr, omp_get_thread_num());
 
   start = omp_get_wtime();
 
+  #pragma omp parallel
+  {
   test_boundness(&input);
+  }
 
   end = omp_get_wtime();
 
@@ -88,18 +92,32 @@ cali_set_int(thread_attr, omp_get_thread_num());
 
 void test_boundness(struct Inputs* input) {
 
-  int L1_size = 4096; // one L1 cache
-  int size = L1_size*64; // one L1 cache
-  int flops = 8;   // divide by 8 for double to get arithmetic intensity
+  size_t L1_size = 4096;        // one L1 cache (number of doubles)
+  size_t L2_size = 128000;      // one L2 cache (number of doubles)
+  size_t size = 128;
+  size_t batch_size = 64;
 
-  // int size = 64;
-  int exp_count = 0;
+  if(input->cache_level == CACHE_L1){
+    size = L1_size*70;     // a few caches worth so the blocked run takes time
+    batch_size = L1_size;
+  } else if(input->cache_level == CACHE_L2) {
+    size = L2_size*20;     // a few caches worth so the blocked run takes time
+    batch_size = L2_size;
+  }
+
+
+  size_t flops = input->flops;  // divide by 8 for double to get arithmetic intensity
+
+  size_t exp_count = 0;
   size_t i,j,k,r;
 
-  int cache_line_order[] = {6,1,5,2,0,7,3,4};
+  size_t cache_line_order[] = {6,1,5,2,0,7,3,4};
 
   TYPE *A, *B, *C;
   data_init(&A, &B, &C, size);
+
+  // Load A array into the lower caches
+  fill_cache(A, size);
 
   for (exp_count = 0; exp_count < 100; exp_count++) {
     #ifdef USE_CALI
@@ -108,7 +126,6 @@ void test_boundness(struct Inputs* input) {
 
       // Load all matrices into the L2 cache
       // fill L1 cache with the C matrix
-      fill_cache(A, size);
       fill_cache(B, size);
       fill_cache(C, size);
 
@@ -119,8 +136,8 @@ void test_boundness(struct Inputs* input) {
     #ifdef USE_CALI
     CALI_MARK_BEGIN("cache_test");
     #endif
-    for (int b = 0; b < size; b+=L1_size) {
-      for (int i = b; i < b+L1_size; i++) {
+    for (size_t b = 0; b < size; b+=batch_size) {
+      for (size_t i = b; i < b+batch_size; i++) {
         TYPE sum = A[i];
         for(j = 1; j < flops; j++) {
           sum += A[i];
@@ -150,7 +167,8 @@ void get_input(int argc, char **argv, struct Inputs* input) {
   int i = 1;
 
   input->cache_level = CACHE_L1;
-  input->threads = 4;
+  input->threads     = 4;
+  input->flops       = 8;
 
   for(i = 1; i < argc; i++) {
 
@@ -167,7 +185,17 @@ void get_input(int argc, char **argv, struct Inputs* input) {
       if (i++ < argc){
         input->threads = atoi(argv[i]);
       } else {
-        printf("Please include a thread count that option\n");
+        printf("Please include a thread count with that option\n");
+        exit(1);
+      }
+
+    }
+
+    if ( !(strcmp("-f", argv[i])) || !(strcmp("--flops", argv[i])) ) {
+      if (i++ < argc){
+        input->flops = atoi(argv[i]);
+      } else {
+        printf("Please include a flop count with that option\n");
         exit(1);
       }
 
@@ -205,7 +233,7 @@ void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size) {
  
 }
 
-void fill_cache(TYPE* A, int size) {
+void fill_cache(TYPE* A, size_t size) {
 
   // random order from online die roller
   int cache_line_order[] = {6,1,5,2,0,7,3,4};
@@ -213,8 +241,9 @@ void fill_cache(TYPE* A, int size) {
   for (int j=0; j<8; j++) {
     for (int i=size-8; i>=0; i-=8) {
       int index_1 = i+cache_line_order[j];
-      int index_2 = (k%size)+cache_line_order[j];
-      A[index_1] += A[index_2];
+      int index_2 = (k+cache_line_order[j])%size;
+      double temp = A[index_2];
+      A[index_1] += temp;
       k += 8;
     }
   }
