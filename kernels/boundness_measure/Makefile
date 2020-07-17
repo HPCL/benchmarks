@@ -15,8 +15,8 @@ CC=icc
 ICC=1
 endif
 
-USE_CALI=1
-#USE_SIMD=1
+# USE_CALI=1
+USE_SIMD=1
 
 INC =
 LIB =

@@ -97,11 +97,13 @@ void test_boundness(struct Inputs* input) {
   size_t size = 128;
   size_t batch_size = 64;
 
+  srand((unsigned int)omp_get_wtime());
+
   if(input->cache_level == CACHE_L1){
     size = L1_size*70;     // a few caches worth so the blocked run takes time
     batch_size = L1_size;
   } else if(input->cache_level == CACHE_L2) {
-    size = L2_size*20;     // a few caches worth so the blocked run takes time
+    size = L2_size*10;     // a few caches worth so the blocked run takes time
     batch_size = L2_size;
   }
 
@@ -111,7 +113,10 @@ void test_boundness(struct Inputs* input) {
   size_t exp_count = 0;
   size_t i,j,k,r;
 
-  size_t cache_line_order[] = {6,1,5,2,0,7,3,4};
+  size_t data_order[batch_size];
+  for (size_t i = 0; i < batch_size; i++) {
+    data_order[i] = rand()%batch_size;
+  }
 
   TYPE *A, *B, *C;
   data_init(&A, &B, &C, size);
@@ -124,10 +129,8 @@ void test_boundness(struct Inputs* input) {
     CALI_MARK_BEGIN("cache_prep");
     #endif
 
-      // Load all matrices into the L2 cache
-      // fill L1 cache with the C matrix
-      fill_cache(B, size);
-      fill_cache(C, size);
+    // Fill L2 and L1 with C matrix that won't be used
+    fill_cache(C, size);
 
     #ifdef USE_CALI
     CALI_MARK_END("cache_prep");
@@ -137,12 +140,13 @@ void test_boundness(struct Inputs* input) {
     CALI_MARK_BEGIN("cache_test");
     #endif
     for (size_t b = 0; b < size; b+=batch_size) {
-      for (size_t i = b; i < b+batch_size; i++) {
-        TYPE sum = A[i];
+      for (size_t i = 0; i < batch_size; i++) {
+        int index = b+data_order[i];
+        TYPE sum = A[index];
         for(j = 1; j < flops; j++) {
-          sum += A[i];
+          sum += A[index];
         }
-        A[i] += sum;
+        A[index] += sum;
       }
     }
     #ifdef USE_CALI
