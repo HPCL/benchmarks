@@ -93,7 +93,8 @@ cali_set_int(thread_attr, omp_get_thread_num());
 void test_boundness(struct Inputs* input) {
 
   size_t L1_size = 4096;        // one L1 cache (number of doubles)
-  size_t L2_size = 128000;      // one L2 cache (number of doubles)
+  size_t L2_size = 128000;      // one L2 cache skylake (number of doubles)
+  size_t L3_size = 176000;      // one L3 cache skylake (number of doubles)
   size_t size = 128;
   size_t batch_size = 64;
 
@@ -103,8 +104,13 @@ void test_boundness(struct Inputs* input) {
     size = L1_size*70;     // a few caches worth so the blocked run takes time
     batch_size = L1_size;
   } else if(input->cache_level == CACHE_L2) {
-    size = L2_size*10;     // a few caches worth so the blocked run takes time
+    // size = L2_size*10;     // a few caches worth so the blocked run takes time
+    size = L2_size;     // a few caches worth so the blocked run takes time
     batch_size = L2_size;
+  } else if(input->cache_level == CACHE_L3) {
+    // size = L2_size*10;     // a few caches worth so the blocked run takes time
+    size = L3_size;     // a few caches worth so the blocked run takes time
+    batch_size = L3_size;
   }
 
 

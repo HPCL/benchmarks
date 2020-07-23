@@ -15,12 +15,11 @@ CC=icc
 ICC=1
 endif
 
-# USE_CALI=1
+USE_CALI=1
 USE_SIMD=1
 
 INC =
 LIB =
-
 
 # can be individually redined in the  arch settings below
 OPT_BASE=-O0
