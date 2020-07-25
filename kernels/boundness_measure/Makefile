@@ -16,7 +16,7 @@ ICC=1
 endif
 
 USE_CALI=1
-USE_SIMD=1
+# USE_SIMD=1
 
 INC =
 LIB =
@@ -47,6 +47,7 @@ endif
 OPT=${OPT_BASE}
 ifdef USE_SIMD
 OPT=${OPT_SIMD}
+OPT += -DUSE_SIMD
 endif
 
 # INC+=-DORDER=${ORDER}

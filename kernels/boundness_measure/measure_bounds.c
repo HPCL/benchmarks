@@ -101,14 +101,13 @@ void test_boundness(struct Inputs* input) {
   srand((unsigned int)omp_get_wtime());
 
   if(input->cache_level == CACHE_L1){
-    size = L1_size*70;     // a few caches worth so the blocked run takes time
+    size = L1_size*16;     // a few caches worth so the blocked run takes time
     batch_size = L1_size;
   } else if(input->cache_level == CACHE_L2) {
     // size = L2_size*10;     // a few caches worth so the blocked run takes time
     size = L2_size;     // a few caches worth so the blocked run takes time
     batch_size = L2_size;
   } else if(input->cache_level == CACHE_L3) {
-    // size = L2_size*10;     // a few caches worth so the blocked run takes time
     size = L3_size;     // a few caches worth so the blocked run takes time
     batch_size = L3_size;
   }
@@ -130,7 +129,7 @@ void test_boundness(struct Inputs* input) {
   // Load A array into the lower caches
   fill_cache(A, size);
 
-  for (exp_count = 0; exp_count < 100; exp_count++) {
+  for (exp_count = 0; exp_count < 1500; exp_count++) {
     #ifdef USE_CALI
     CALI_MARK_BEGIN("cache_prep");
     #endif
@@ -146,9 +145,13 @@ void test_boundness(struct Inputs* input) {
     CALI_MARK_BEGIN("cache_test");
     #endif
     for (size_t b = 0; b < size; b+=batch_size) {
+      #pragma unroll
       for (size_t i = 0; i < batch_size; i++) {
         int index = b+data_order[i];
         TYPE sum = A[index];
+        #ifdef USE_SIMD
+        #pragma omp simd reduction(+:sum)
+        #endif
         for(j = 1; j < flops; j++) {
           sum += A[index];
         }
