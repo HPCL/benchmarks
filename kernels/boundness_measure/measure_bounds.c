@@ -35,6 +35,7 @@
 #define CACHE_L1 1
 #define CACHE_L2 2
 #define CACHE_L3 3
+#define CACHE_EM 4
 
 
 
@@ -48,9 +49,11 @@ struct Inputs {
 void test_boundness(struct Inputs* input);
 
 void get_input(int argc, char **argv, struct Inputs* input);
-void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size);
+// void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size);
+void data_init(TYPE** A, TYPE** C, size_t size);
 void fill_cache(TYPE* A, size_t size);
-void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size);
+// void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size);
+void matrix_free(TYPE* A, TYPE* C, size_t size);
 void print_mat(TYPE* C);
 
 
@@ -110,8 +113,10 @@ void test_boundness(struct Inputs* input) {
   } else if(input->cache_level == CACHE_L3) {
     size = L3_size;     // a few caches worth so the blocked run takes time
     batch_size = L3_size;
+  } else if(input->cache_level == CACHE_EM) {
+    size = L3_size*3;     // a few caches worth so the blocked run takes time
+    batch_size = L3_size;
   }
-
 
   size_t flops = input->flops;  // divide by 8 for double to get arithmetic intensity
 
@@ -124,7 +129,8 @@ void test_boundness(struct Inputs* input) {
   }
 
   TYPE *A, *B, *C;
-  data_init(&A, &B, &C, size);
+  // data_init(&A, &B, &C, size);
+  data_init(&A, &C, size);
 
   // Load A array into the lower caches
   fill_cache(A, size);
@@ -163,7 +169,8 @@ void test_boundness(struct Inputs* input) {
     #endif
   }
 
-  matrix_free(A,B,C,size);
+  // matrix_free(A,B,C,size);
+  matrix_free(A,C,size);
 
 }
 
@@ -194,6 +201,9 @@ void get_input(int argc, char **argv, struct Inputs* input) {
     else if ( !(strcmp("-3", argv[i])) || !(strcmp("--cache_l3", argv[i])) )
       input->cache_level = CACHE_L3;
 
+    else if ( !(strcmp("-m", argv[i])) || !(strcmp("--external_memory", argv[i])) )
+      input->cache_level = CACHE_EM;
+
     if ( !(strcmp("-t", argv[i])) || !(strcmp("--threads", argv[i])) ) {
       if (i++ < argc){
         input->threads = atoi(argv[i]);
@@ -220,7 +230,8 @@ void get_input(int argc, char **argv, struct Inputs* input) {
 
 
 // Initialize the matrices (uniform values to make an easier check)
-void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size) {
+// void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size) {
+void data_init(TYPE** A, TYPE** C, size_t size) {
   size_t i, j;
 
 
@@ -230,17 +241,18 @@ void data_init(TYPE** A, TYPE** B, TYPE** C, size_t size) {
   }
 
   (*A) = (TYPE*)aligned_alloc(64, size*sizeof(TYPE));
-  (*B) = (TYPE*)aligned_alloc(64, size*sizeof(TYPE));
+  // (*B) = (TYPE*)aligned_alloc(64, size*sizeof(TYPE));
   (*C) = (TYPE*)aligned_alloc(64, size*sizeof(TYPE));
 
-  if( ((*A) == NULL) || ((*B) == NULL) || ((*C) == NULL) ) {
+  // if( ((*A) == NULL) || ((*B) == NULL) || ((*C) == NULL) ) {
+  if( ((*A) == NULL) || ((*C) == NULL) ) {
     printf("ERROR allocating memory\n");
     exit(1);
   }
 
   for (j=0; j<size; j++) {
     (*A)[j] = AVAL;
-    (*B)[j] = BVAL;
+    // (*B)[j] = BVAL;
     (*C)[j] = 0.0;
   }
  
@@ -264,10 +276,11 @@ void fill_cache(TYPE* A, size_t size) {
 }
 
 
-void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size) {
+// void matrix_free(TYPE* A, TYPE* B, TYPE* C, size_t size) {
+void matrix_free(TYPE* A, TYPE* C, size_t size) {
 
   free(A);
-  free(B);
+  // free(B);
   free(C);
 
 }
