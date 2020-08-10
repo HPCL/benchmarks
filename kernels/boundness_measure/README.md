@@ -15,3 +15,18 @@ architectures.
 
 
 ## Usage
+
+./measure_bounds -[c] -t [t] -f [f]
+
+c is for the data size
+  * -1 size is several times L1 but blocked to fit in L1
+  * -2 size is equal to L2
+  * -3 size is equal to L3
+  * -m size is 3x L3 and broken because it is currently block to L3
+
+t is for the number of threads
+  * we run the number of memory controllers
+  * 12 for Skylake and 8 for Rome
+
+f is for the flops
+  * divide by 8 to get arithmetic intensity
