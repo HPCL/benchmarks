@@ -32,6 +32,7 @@
 #define TRUE  1
 #define FALSE 0
 
+#define CACHE_RF 0
 #define CACHE_L1 1
 #define CACHE_L2 2
 #define CACHE_L3 3
@@ -95,35 +96,34 @@ cali_set_int(thread_attr, omp_get_thread_num());
 
 void test_boundness(struct Inputs* input) {
 
+  size_t RF_size = 192;        // one RF cache (number of doubles) this is an estimate
   size_t L1_size = 4096;        // one L1 cache (number of doubles)
-  size_t L2_size = 128000;      // one L2 cache skylake (number of doubles)
-  size_t L3_size = 176000;      // one L3 cache skylake (number of doubles)
+  size_t L2_size = 131072;      // one L2 cache skylake (number of doubles)
+  size_t L3_size = 524288;      // one L3 cache skylake (number of doubles)
   size_t size = 128;
   size_t batch_size = 64;
 
   srand((unsigned int)omp_get_wtime());
 
-  if(input->cache_level == CACHE_L1){
-    size = L1_size*16;     // a few caches worth so the blocked run takes time
+  if(input->cache_level == CACHE_RF){
+    batch_size = RF_size;
+  } else if(input->cache_level == CACHE_L1) {
     batch_size = L1_size;
   } else if(input->cache_level == CACHE_L2) {
-    // size = L2_size*10;     // a few caches worth so the blocked run takes time
-    size = L2_size;     // a few caches worth so the blocked run takes time
     batch_size = L2_size;
   } else if(input->cache_level == CACHE_L3) {
-    size = L3_size;     // a few caches worth so the blocked run takes time
     batch_size = L3_size;
   } else if(input->cache_level == CACHE_EM) {
-    size = L3_size*3;     // a few caches worth so the blocked run takes time
     batch_size = L3_size;
   }
-
+  size = L3_size*3;     // a few caches worth so the blocked run takes time
+  
   size_t flops = input->flops;  // divide by 8 for double to get arithmetic intensity
 
   size_t exp_count = 0;
   size_t i,j,k,r;
 
-  size_t data_order[batch_size];
+  size_t *data_order = (size_t*)aligned_alloc(64, batch_size*sizeof(size_t));
   for (size_t i = 0; i < batch_size; i++) {
     data_order[i] = rand()%batch_size;
   }
@@ -171,6 +171,8 @@ void test_boundness(struct Inputs* input) {
 
   // matrix_free(A,B,C,size);
   matrix_free(A,C,size);
+  free(data_order);
+
 
 }
 
@@ -192,7 +194,10 @@ void get_input(int argc, char **argv, struct Inputs* input) {
 
   for(i = 1; i < argc; i++) {
 
-    if ( !(strcmp("-1", argv[i])) || !(strcmp("--cache_l1", argv[i])) )
+    if ( !(strcmp("-r", argv[i])) || !(strcmp("--register_file", argv[i])) )
+      input->cache_level = CACHE_L1;
+
+    else if ( !(strcmp("-1", argv[i])) || !(strcmp("--cache_l1", argv[i])) )
       input->cache_level = CACHE_L1;
 
     else if ( !(strcmp("-2", argv[i])) || !(strcmp("--cache_l2", argv[i])) )
@@ -204,7 +209,7 @@ void get_input(int argc, char **argv, struct Inputs* input) {
     else if ( !(strcmp("-m", argv[i])) || !(strcmp("--external_memory", argv[i])) )
       input->cache_level = CACHE_EM;
 
-    if ( !(strcmp("-t", argv[i])) || !(strcmp("--threads", argv[i])) ) {
+    else if ( !(strcmp("-t", argv[i])) || !(strcmp("--threads", argv[i])) ) {
       if (i++ < argc){
         input->threads = atoi(argv[i]);
       } else {
@@ -214,7 +219,7 @@ void get_input(int argc, char **argv, struct Inputs* input) {
 
     }
 
-    if ( !(strcmp("-f", argv[i])) || !(strcmp("--flops", argv[i])) ) {
+    else if ( !(strcmp("-f", argv[i])) || !(strcmp("--flops", argv[i])) ) {
       if (i++ < argc){
         input->flops = atoi(argv[i]);
       } else {
@@ -222,6 +227,17 @@ void get_input(int argc, char **argv, struct Inputs* input) {
         exit(1);
       }
 
+    }
+    else if ( !(strcmp("-h", argv[i])) || !(strcmp("--help", argv[i])) ) {
+      printf("Measure Boundness Options\n");
+      printf("-r, --register_file .......fit the batch size into the register file\n");
+      printf("-1, --cache_l1 ............fit the batch size into the L1 cache\n");
+      printf("-2, --cache_l2 ............fit the batch size into the L2 cache\n");
+      printf("-3, --cache_l3 ............fit the batch size into the L3 cache\n");
+      printf("-m, --external_memory .....batch size larger than L3 to force memory access\n");
+      printf("-t [], --threads [] .......number of threads to run\n");
+      printf("-f [], --flops [] .........number of flops per load (divide by 8 for arithmetic intensity)\n");
+      exit(1);
     }
 
   }
