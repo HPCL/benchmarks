@@ -186,16 +186,27 @@ void get_input(int argc, char **argv, struct Inputs* input) {
 
   for(i = 1; i < argc; i++) {
 
-    if ( !(strcmp("-o", argv[i])) || !(strcmp("--order", argv[i])) ) {
+    if ( !(strcmp("-h", argv[i])) || !(strcmp("--help", argv[i])) ) {
+      printf("\n");
+      printf("n body problem help usage:\n");
+      printf("  -h --help ...................... print this message\n");
+      printf("  -n --num_particles [] .......... set the number of particles (65536)\n");
+      printf("  -s --time_steps [] ............. set the number of time steps (4)\n");
+      printf("  -t --num_threads [] ............ set the number of threads (16)\n");
+      printf("\n");
+      exit(0);
+    }
+
+    if ( !(strcmp("-n", argv[i])) || !(strcmp("--order", argv[i])) ) {
       if (i++ < argc){
         input->order = atoi(argv[i]);
       } else {
-        printf("Please include a flop count with that o/order\n");
+        printf("Please include a flop count with that option o/order\n");
         exit(1);
       }
     }
 
-    if ( !(strcmp("-t", argv[i])) || !(strcmp("--time_steps", argv[i])) ) {
+    if ( !(strcmp("-s", argv[i])) || !(strcmp("--time_steps", argv[i])) ) {
       if (i++ < argc){
         input->time_steps = atoi(argv[i]);
       } else {
@@ -204,7 +215,7 @@ void get_input(int argc, char **argv, struct Inputs* input) {
       }
     }
 
-    if ( !(strcmp("-n", argv[i])) || !(strcmp("--num_threads", argv[i])) ) {
+    if ( !(strcmp("-t", argv[i])) || !(strcmp("--num_threads", argv[i])) ) {
       if (i++ < argc){
         input->threads = atoi(argv[i]);
       } else {

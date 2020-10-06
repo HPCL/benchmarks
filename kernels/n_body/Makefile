@@ -3,8 +3,9 @@
 # Settings; change these to select the system and optimization levels
 
 # choose settings particular to a system
-SKY=1
-#ARM=1
+# SKY=1
+#TX2=1
+A64=1
 #AMD=1
 #KNL=1
 
@@ -15,8 +16,8 @@ CC=icc
 ICC=1
 endif
 
-# USE_CALI=1
-# USE_SIMD=1
+USE_CALI=1
+USE_SIMD=1
 
 INC =
 LIB =
@@ -32,8 +33,12 @@ ifdef AMD
 OPT_SIMD=-O3 -DVLEN=4 -march=znver2 -mavx2
 endif
 
-ifdef ARM
+ifdef TX2
 OPT_SIMD=-O3 -DVLEN=2 -march=armv8.1-a+simd
+endif
+
+ifdef A64
+OPT_SIMD=-O3 -DVLEN=2 -march=armv8.2-a+sve
 endif
 
 ifdef KNL
@@ -78,8 +83,7 @@ test: n_body
 .PHONY: clean
 
 clean:
-	$(RM) measure_bounds measure_bounds_v2 *.o
-	# rm -rf MULTI__*
+	$(RM) n_body *.o
 
 clena: clean
 
