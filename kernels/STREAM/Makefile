@@ -1,11 +1,24 @@
-CC = gcc-9
-CFLAGS = -O2 -fopenmp
+CC = gcc
+CC = icc
+CFLAGS = -O2 -fopenmp -g -qopt-streaming-stores=auto
+#CFLAGS += -S 
 LIB = 
 
+USE_LIKWID=1
+#USE_CALI=1
+
+ifdef USE_CALI
 CFLAGS += -I${CALIPER_DIR}/include
 CFLAGS += -DUSE_CALI
 LIB  += -L${CALIPER_DIR}/lib64 
 LIB  += -lcaliper 
+endif
+
+
+ifdef USE_LIKWID
+  CFLAGS += -DUSE_LIKWID
+  CFLAGS += -I/home/gravelle/soft/src/likwid/intel/include
+endif
 
 
 FC = gfortran-4.9

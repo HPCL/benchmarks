@@ -52,6 +52,9 @@
 #include <caliper/cali.h>
 #endif
 
+#ifdef USE_LIKWID
+#include <likwid-marker.h>
+#endif
 
 
 /*-----------------------------------------------------------------------
@@ -252,10 +255,21 @@ main()
 
 #ifdef _OPENMP
     printf(HLINE);
+
+#ifdef USE_CALI
 cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
 #pragma omp parallel 
     {
 cali_set_int(thread_attr, omp_get_thread_num());
+    }
+#endif
+    
+#ifdef USE_LIKWID
+LIKWID_MARKER_INIT;
+#endif
+
+#pragma omp parallel 
+    {
 #pragma omp master
 	{
 	    k = omp_get_num_threads();
@@ -357,6 +371,9 @@ cali_set_int(thread_attr, omp_get_thread_num());
 	}
 
 
+#ifdef USE_LIKWID
+LIKWID_MARKER_CLOSE;
+#endif
 
 
     /*	--- SUMMARY --- */
@@ -571,11 +588,21 @@ void tuned_STREAM_Copy()
 	ssize_t j, _b;
 #pragma omp parallel
 { 
+#ifdef USE_CALI
 CALI_MARK_BEGIN("copy");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("copy");
+#endif
 #pragma omp for
         for (j=0; j<STREAM_ARRAY_SIZE; j++)
             for (_b = 0; _b < BW_SCALE; _b++) c[j] = a[j];
+#ifdef USE_CALI
 CALI_MARK_END("copy");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("copy");
+#endif
 } // parallel
 }
 
@@ -585,12 +612,21 @@ void tuned_STREAM_Scale(STREAM_TYPE scalar)
 
 #pragma omp parallel
 {
+#ifdef USE_CALI
 CALI_MARK_BEGIN("scale");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("scale");
+#endif
 #pragma omp for
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    for (_b = 0; _b < BW_SCALE; _b++) b[j] = scalar*c[j];
-
+#ifdef USE_CALI
 CALI_MARK_END("scale");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("scale");
+#endif
 } // parallel
 
 }
@@ -600,12 +636,21 @@ void tuned_STREAM_Add()
 	ssize_t j, _b;
 #pragma omp parallel
 {
+#ifdef USE_CALI
 CALI_MARK_BEGIN("add");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("add");
+#endif
 #pragma omp for
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    for (_b = 0; _b < BW_SCALE; _b++) c[j] = a[j]+b[j];
-
+#ifdef USE_CALI
 CALI_MARK_END("add");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("add");
+#endif
 } // parallel
 
 }
@@ -615,12 +660,21 @@ void tuned_STREAM_Triad(STREAM_TYPE scalar)
 	ssize_t j, _b;
 #pragma omp parallel
 {
+#ifdef USE_CALI
 CALI_MARK_BEGIN("triad");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("triad");
+#endif
 #pragma omp for
 	for (j=0; j<STREAM_ARRAY_SIZE; j++)
 	    for (_b = 0; _b < BW_SCALE; _b++) a[j] = b[j]+scalar*c[j];
-
+#ifdef USE_CALI
 CALI_MARK_END("triad");
+#endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("triad");
+#endif
 } // parallel
 
 }
