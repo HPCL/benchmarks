@@ -62,54 +62,41 @@ void multiply_matrix(double** mat_a, int rows_a, int cols_a,
 //post mat_c has the result of multipling mat_a and mat_b
 void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a, 
                        double** restrict mat_b, int cols_b, 
-                       double** restrict mat_c,
-                       int block_size) {
+                       double** restrict mat_c) {
 
   int i, j, k;
-  int ii, jj;
+  int ii, jj, kk;
+  int iii, jjj, kkk;
 
-  int remainder =  cols_b%block_size;
-  int block_cols = cols_b-remainder;
 
-#pragma omp parallel private(i,j,k,ii,jj)
+#pragma omp parallel private(iii,jjj,ii,jj,i,j,k)
 {
 #ifdef USE_CALI
 CALI_MARK_BEGIN("block_mm");
 #endif
+#ifdef USE_LIKWID
+LIKWID_MARKER_START("block_mm");
+#endif
 
   #pragma omp for
-  for (i = 0; i < rows_a; i++) {
-  // for (ii = 0; ii < block_rows; ii+=block_size) {
-  // for (i = ii; i < ii+block_size; i++) {
-    for (jj = 0; jj < block_cols; jj+=block_size) {
-    #pragma omp simd
-    for (j = jj; j < jj+block_size; j++) {
-      mat_c[i][j] = 0;
-      #pragma unroll
-      for (k = 0; k < cols_a; k++) {
-        mat_c[i][j] += mat_a[i][k] * mat_b[j][k];
-      }
-    } 
-    }
-    #pragma omp simd
-    for (j =  block_cols; j < cols_b; j++) {
-      mat_c[i][j] = 0;
-      #pragma unroll
-      for (k = 0; k < cols_a; k++) {
-        mat_c[i][j] += mat_a[i][k] * mat_b[j][k];
-      }
-    } 
-  }
+  for (int i = 0; i < rows_a; i++ ) {
+    for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
+      for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
+        for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS) {
+          for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
+            mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
+        }
+  } // i
 
-  // #pragma omp for
-  // for (i = block_rows; i < remainder; i++) {
-  // }
 
 
 #ifdef USE_CALI
 CALI_MARK_END("block_mm");
 #endif
 }
+#ifdef USE_LIKWID
+LIKWID_MARKER_STOP("block_mm");
+#endif
 
 }
 

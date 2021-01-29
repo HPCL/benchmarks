@@ -1,7 +1,7 @@
-CC = gcc
+CC = icc
 # choose settings particular to a system
-# SKY=1
-A64=1
+SKY=1
+# A64=1
 #AMD=1
 #KNL=1
 
@@ -9,15 +9,18 @@ A64=1
 # I recommend having this number be large enough to fill L1 cache
 # i.e. 5000*8(bytes per double) = 40K bytes > L1d on Skylake
 # 2(rows)*8(bytes per double)*4096 = 64KiB which is equal to L1 on A64
-ifndef ORDER
-# 	ORDER=4096
-# 	ORDER=5120
-# 	ORDER=5632
-	ORDER=8192
-# 	ORDER=16384
-# 	ORDER=20480
-endif
 
+# 	ORDER?=4096
+# 	ORDER?=5120
+# 	ORDER?=5632
+ORDER?=8192
+# 	ORDER?=16384
+# 	ORDER?=20480
+
+BLOCK_ROWS?=256
+BLOCK_COLS?=256
+
+USE_LIKWID=1
 # USE_CALI=1
 # USE_SIMD=1
 
@@ -49,16 +52,20 @@ OPT_SIMD=-O3 -g -mavx512f -mavx512cd
 endif
 endif
 
-
 INC+=-DORDER=${ORDER}
-
-
 
 ifdef USE_CALI 
   INC += -I${CALIPER_DIR}/include
   INC += -DUSE_CALI
   LIB  += -L${CALIPER_DIR}/lib64 
   LIB  += -lcaliper
+endif
+
+ifdef USE_LIKWID
+  INC += -DLIKWID_PERFMON
+  INC += -DUSE_LIKWID
+  INC += -I$(LIKWID_DIR)/include
+  LIB += -L$(LIKWID_DIR)/lib -llikwid
 endif
 
 OPT=${OPT_BASE}

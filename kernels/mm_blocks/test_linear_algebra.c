@@ -19,7 +19,7 @@
 #include <omp.h>
 
 void test_multiply();
-void test_multiply_2(int block_size);
+void test_multiply_2();
 void test_add();
 void test_transpose();
 
@@ -46,6 +46,12 @@ int main(int argc, char **argv) {
     printf("Number of threads: %d\n",omp_get_num_threads());
   }
   
+
+#ifdef USE_LIKWID
+LIKWID_MARKER_INIT;
+LIKWID_MARKER_REGISTER("block_mm");
+#endif
+  
   // printf("Enter 'c' to continue. Note it may require multiple entries.\n");
   // scanf("%s", temp);
   // test_add();
@@ -53,8 +59,12 @@ int main(int argc, char **argv) {
   // test_transpose();
   // scanf("%s", temp);
   // test_multiply();
-  test_multiply_2(block_size);
+  test_multiply_2();
   // scanf("%s", temp);
+
+#ifdef USE_LIKWID
+LIKWID_MARKER_CLOSE;
+#endif
   printf("Bye now!\n\n");
 
   return 0;
@@ -122,7 +132,7 @@ void test_multiply() {
   printf("\n");
 }
 
-void test_multiply_2(int block_size) {
+void test_multiply_2() {
   int size = 17;
 #ifdef ORDER
   size = ORDER;
@@ -130,7 +140,8 @@ void test_multiply_2(int block_size) {
 
   printf("Running blocked matrix multiply.\n");
   printf("  Matrix side length: %d\n", size);
-  printf("  Block size is:      %d\n", block_size);
+  printf("  Block columns is:      %d\n", BLOCK_COLS);
+  printf("  Block rows is:         %d\n", BLOCK_ROWS);
 
   int i,j,k;
   double wall_start, wall_end;
@@ -162,10 +173,10 @@ void test_multiply_2(int block_size) {
   }
 
 
-  printf("  sizeof A is:        %d\n", sizeof(A[0]));
+  // printf("  sizeof A is:        %d\n", sizeof(A[0]));
 
   wall_start = omp_get_wtime();
-  multiply_matrix_t(A, size, size, B, size, C, block_size);
+  multiply_matrix_t(A, size, size, B, size, C);
   wall_end = omp_get_wtime();
 
   #pragma omp parallel for
@@ -180,6 +191,7 @@ void test_multiply_2(int block_size) {
   } else {
     printf("Multiply complete: Success\n");
     printf("Time: %fs\n", (wall_end - wall_start));
+    printf("FLOPS Theoretical: %d\n", (size*size*size*2));
   }
 
 

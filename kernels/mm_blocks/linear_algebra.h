@@ -26,6 +26,23 @@
 #include <caliper/cali.h>
 #endif
 
+#ifdef USE_LIKWID
+#include <likwid.h>
+#include <likwid-marker.h>
+#endif
+
+#ifndef ORDER
+#define ORDER 2048
+#endif
+#ifndef BLOCK_ROWS
+#define BLOCK_ROWS 256
+#endif
+#ifndef BLOCK_COLS
+#define BLOCK_COLS 256
+#endif
+
+#define max(x,y)    ((x) > (y)? (x) : (y))
+#define min(x,y)    ((x) < (y)? (x) : (y))
 
 void print_matrix(double** mat_a, int rows_a, int cols_a);
  
@@ -42,7 +59,7 @@ void add_matrix(double** mat_a, int rows, int cols, double** mat_b, double** mat
 //post mat_c has the result of multipling mat_a and mat_b
 void multiply_matrix(double** mat_a, int rows_a, int cols_a, double** mat_b, int cols_b, double** mat_c);
 // same but with b transposed
-void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a, double** restrict mat_b, int cols_b, double** restrict mat_c, int block_size);
+void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a, double** restrict mat_b, int cols_b, double** restrict mat_c);
 
 //transpose a matrix
 //pre all matrices are initialized, c shouldn't have any important data in it
