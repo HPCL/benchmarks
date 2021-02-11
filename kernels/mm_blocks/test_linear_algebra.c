@@ -32,13 +32,20 @@ int main(int argc, char **argv) {
 
   // omp_set_num_threads(48);
 
-  #ifdef USE_CALI
+#ifdef USE_CALI
   cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
+
+#ifdef USE_CALI_REG
   #pragma omp parallel
   {
   cali_set_int(thread_attr, omp_get_thread_num());
   }
-  #endif
+#endif
+#ifdef USE_CALI_UNCORE
+  cali_set_int(thread_attr, omp_get_thread_num());
+#endif
+
+#endif
 
   #pragma omp parallel
   {
@@ -164,6 +171,7 @@ void test_multiply_2() {
     C[i] = (double*)malloc(size*sizeof(double));
   }
 
+  #pragma omp parallel for private(i,j,k)
   for (i=0; i<size; i++) {
   for (j=0; j<size; j++) {
     A[i][j] = a_val;
@@ -179,11 +187,11 @@ void test_multiply_2() {
   multiply_matrix_t(A, size, size, B, size, C);
   wall_end = omp_get_wtime();
 
-  #pragma omp parallel for
+  // #pragma omp parallel for
+  #pragma omp parallel for reduction(+:ee) private(i,j)
   for (i=0; i<size; i++) {
     for (j=0; j<size; j++) {
-      e = C[i][j] - v;
-      ee += e * e;
+      ee += (C[i][j] - v)*(C[i][j] - v);
     }
   }
   if (ee > 0.05) {
@@ -191,7 +199,8 @@ void test_multiply_2() {
   } else {
     printf("Multiply complete: Success\n");
     printf("Time: %fs\n", (wall_end - wall_start));
-    printf("FLOPS Theoretical: %d\n", (size*size*size*2));
+    printf("FLOPS Theoretical: %f\n", ((double)size*(double)size*(double)size*2.0));
+    printf("FLOPS per second:  %f\n", ((double)size*(double)size*(double)size*2.0/(wall_end - wall_start)));
   }
 
 

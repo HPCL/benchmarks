@@ -1,4 +1,4 @@
-CC = icc
+CC = gcc
 # choose settings particular to a system
 SKY=1
 # A64=1
@@ -20,8 +20,9 @@ ORDER?=8192
 BLOCK_ROWS?=256
 BLOCK_COLS?=256
 
-USE_LIKWID=1
+# USE_LIKWID=1
 # USE_CALI=1
+# USE_CALI_UNCORE=1
 # USE_SIMD=1
 
 INC =
@@ -59,6 +60,14 @@ ifdef USE_CALI
   INC += -DUSE_CALI
   LIB  += -L${CALIPER_DIR}/lib64 
   LIB  += -lcaliper
+endif
+
+ifdef USE_CALI_UNCORE
+  INC += -DUSE_CALI_UNCORE
+else
+  ifdef USE_CALI
+  INC += -DUSE_CALI_REG
+  endif
 endif
 
 ifdef USE_LIKWID

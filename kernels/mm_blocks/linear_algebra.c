@@ -68,14 +68,21 @@ void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a,
   int ii, jj, kk;
   int iii, jjj, kkk;
 
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_START("block_mm");
+}
+#endif
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("block_mm");
+#endif
 
 #pragma omp parallel private(iii,jjj,ii,jj,i,j,k)
 {
-#ifdef USE_CALI
+#ifdef USE_CALI_REG
 CALI_MARK_BEGIN("block_mm");
-#endif
-#ifdef USE_LIKWID
-LIKWID_MARKER_START("block_mm");
 #endif
 
   #pragma omp for
@@ -88,14 +95,20 @@ LIKWID_MARKER_START("block_mm");
         }
   } // i
 
-
-
-#ifdef USE_CALI
+#ifdef USE_CALI_REG
 CALI_MARK_END("block_mm");
 #endif
 }
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("block_mm");
+#endif
+
 #ifdef USE_LIKWID
+#pragma omp parallel
+{
 LIKWID_MARKER_STOP("block_mm");
+}
 #endif
 
 }
