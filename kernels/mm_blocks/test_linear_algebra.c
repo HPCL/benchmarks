@@ -161,14 +161,14 @@ void test_multiply_2() {
   double** B;    
   double** C;
 
-  A = (double**)malloc(size*sizeof(double*));
-  B = (double**)malloc(size*sizeof(double*));
-  C = (double**)malloc(size*sizeof(double*));
+  A = (double**)aligned_alloc(64,size*sizeof(double*));
+  B = (double**)aligned_alloc(64,size*sizeof(double*));
+  C = (double**)aligned_alloc(64,size*sizeof(double*));
 
   for (i=0; i<size; i++) {
-    A[i] = (double*)malloc(size*sizeof(double));
-    B[i] = (double*)malloc(size*sizeof(double));
-    C[i] = (double*)malloc(size*sizeof(double));
+    A[i] = (double*)aligned_alloc(64,size*sizeof(double));
+    B[i] = (double*)aligned_alloc(64,size*sizeof(double));
+    C[i] = (double*)aligned_alloc(64,size*sizeof(double));
   }
 
   #pragma omp parallel for private(i,j,k)

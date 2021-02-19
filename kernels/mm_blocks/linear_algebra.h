@@ -59,7 +59,9 @@ void add_matrix(double** mat_a, int rows, int cols, double** mat_b, double** mat
 //post mat_c has the result of multipling mat_a and mat_b
 void multiply_matrix(double** mat_a, int rows_a, int cols_a, double** mat_b, int cols_b, double** mat_c);
 // same but with b transposed
-void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a, double** restrict mat_b, int cols_b, double** restrict mat_c);
+void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
 
 //transpose a matrix
 //pre all matrices are initialized, c shouldn't have any important data in it

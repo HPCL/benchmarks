@@ -60,9 +60,9 @@ void multiply_matrix(double** mat_a, int rows_a, int cols_a,
 //     rows in b == cols in a
 //     c is initialized to the same size as b
 //post mat_c has the result of multipling mat_a and mat_b
-void multiply_matrix_t(double** restrict mat_a, int rows_a, int cols_a, 
-                       double** restrict mat_b, int cols_b, 
-                       double** restrict mat_c) {
+void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c) {
 
   int i, j, k;
   int ii, jj, kk;
@@ -90,6 +90,7 @@ CALI_MARK_BEGIN("block_mm");
     for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
       for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
         for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS) {
+          // #pragma omp simd aligned(mat_a[i], mat_b[j], mat_c[i]: 64)
           for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
             mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
         }

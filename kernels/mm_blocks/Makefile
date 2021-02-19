@@ -1,4 +1,4 @@
-CC = gcc
+CC = icc
 # choose settings particular to a system
 SKY=1
 # A64=1
@@ -17,13 +17,15 @@ ORDER?=8192
 # 	ORDER?=16384
 # 	ORDER?=20480
 
-BLOCK_ROWS?=256
-BLOCK_COLS?=256
+# BLOCK_ROWS?=256
+# BLOCK_COLS?=256
+BLOCK_ROWS?=8192
+BLOCK_COLS?=8192
 
 # USE_LIKWID=1
-# USE_CALI=1
+USE_CALI=1
 # USE_CALI_UNCORE=1
-# USE_SIMD=1
+USE_SIMD=1
 
 INC =
 LIB =
@@ -31,10 +33,16 @@ LIB =
 MPIRUN = mpirun
 
 # can be individually redined in the  arch settings below
-OPT_BASE=-O0 -g
+OPT_BASE=-O0 -g -qopt-report-phase=vec 
+
+# friendly reminder that -no-fma and -S may be useful
 
 ifdef SKY
-OPT_SIMD=-O3 -g  -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+ifeq ($(CC),icc)
+OPT_SIMD=-O3 -g -qopt-report-phase=vec -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+else
+OPT_SIMD=-O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+endif
 endif
 
 ifdef AMD
@@ -54,6 +62,8 @@ endif
 endif
 
 INC+=-DORDER=${ORDER}
+INC+=-DBLOCK_ROWS=${BLOCK_ROWS}
+INC+=-DBLOCK_COLS=${BLOCK_COLS}
 
 ifdef USE_CALI 
   INC += -I${CALIPER_DIR}/include
