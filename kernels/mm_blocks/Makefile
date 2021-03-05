@@ -1,7 +1,7 @@
-CC = icc
+CC = gcc
 # choose settings particular to a system
-SKY=1
-# A64=1
+# SKY=1
+A64=1
 #AMD=1
 #KNL=1
 
@@ -10,20 +10,25 @@ SKY=1
 # i.e. 5000*8(bytes per double) = 40K bytes > L1d on Skylake
 # 2(rows)*8(bytes per double)*4096 = 64KiB which is equal to L1 on A64
 
+
+       ORDER?=1024
 # 	ORDER?=4096
 # 	ORDER?=5120
 # 	ORDER?=5632
-ORDER?=8192
+#       ORDER?=8192
 # 	ORDER?=16384
 # 	ORDER?=20480
 
-# BLOCK_ROWS?=256
-# BLOCK_COLS?=256
-BLOCK_ROWS?=8192
-BLOCK_COLS?=8192
+#BLOCK_ROWS?=64
+#BLOCK_COLS?=64
+BLOCK_ROWS?=256
+BLOCK_COLS?=256
+#BLOCK_ROWS?=8192
+#BLOCK_COLS?=8192
+
 
 # USE_LIKWID=1
-USE_CALI=1
+# USE_CALI=1
 # USE_CALI_UNCORE=1
 USE_SIMD=1
 
@@ -33,7 +38,11 @@ LIB =
 MPIRUN = mpirun
 
 # can be individually redined in the  arch settings below
+ifeq ($(CC),icc)
 OPT_BASE=-O0 -g -qopt-report-phase=vec 
+else
+OPT_BASE=-O0 -g
+endif
 
 # friendly reminder that -no-fma and -S may be useful
 
@@ -50,7 +59,7 @@ OPT_SIMD=-O3 -g -march=znver2 -mavx2
 endif
 
 ifdef A64
-OPT_SIMD=-O3 -g -march=armv8.2-a+sve  -fopenmp-simd
+OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -funroll-loops -msve-vector-bits=512 -fopenmp-simd
 endif
 
 ifdef KNL

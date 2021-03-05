@@ -62,6 +62,9 @@ void multiply_matrix(double** mat_a, int rows_a, int cols_a, double** mat_b, int
 void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
+void multiply_matrix_f(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
 
 //transpose a matrix
 //pre all matrices are initialized, c shouldn't have any important data in it

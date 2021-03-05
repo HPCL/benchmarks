@@ -184,6 +184,7 @@ void test_multiply_2() {
   // printf("  sizeof A is:        %d\n", sizeof(A[0]));
 
   wall_start = omp_get_wtime();
+  // multiply_matrix_f(A, size, size, B, size, C);
   multiply_matrix_t(A, size, size, B, size, C);
   wall_end = omp_get_wtime();
 

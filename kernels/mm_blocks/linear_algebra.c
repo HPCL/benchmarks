@@ -90,10 +90,72 @@ CALI_MARK_BEGIN("block_mm");
     for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
       for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
         for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS) {
-          // #pragma omp simd aligned(mat_a[i], mat_b[j], mat_c[i]: 64)
+          #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
           for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
             mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
         }
+  } // i
+
+#ifdef USE_CALI_REG
+CALI_MARK_END("block_mm");
+#endif
+}
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("block_mm");
+#endif
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_STOP("block_mm");
+}
+#endif
+
+}
+
+//multiply matrices together
+//this version flips the j and k loops in an attempt to improve vectorization
+//pre all matrices are initialized, c shouldn't have any important data in it
+//     mat b is trnasposed
+//     rows in b == cols in a
+//     c is initialized to the same size as b
+//post mat_c has the result of multipling mat_a and mat_b
+void multiply_matrix_f(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c) {
+
+  int i, j, k;
+  int ii, jj, kk;
+  int iii, jjj, kkk;
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_START("block_mm");
+}
+#endif
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("block_mm");
+#endif
+
+#pragma omp parallel private(iii,jjj,ii,jj,i,j,k)
+{
+#ifdef USE_CALI_REG
+CALI_MARK_BEGIN("block_mm");
+#endif
+
+  #pragma omp for
+  for (int i = 0; i < rows_a; i++ ) {
+
+    for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS)
+      for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
+        for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
+          #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
+          for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
+            mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
+
   } // i
 
 #ifdef USE_CALI_REG
