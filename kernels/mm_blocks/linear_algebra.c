@@ -90,7 +90,8 @@ CALI_MARK_BEGIN("block_mm");
     for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
       for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
         for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS) {
-          #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
+          #pragma omp simd
+          // #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
           for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
             mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
         }

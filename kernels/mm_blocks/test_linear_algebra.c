@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include <time.h>
 
 void test_multiply();
 void test_multiply_2();
@@ -110,20 +111,34 @@ void test_add() {
 
 void test_multiply() {
   int col_A = 3, row_A = 3;
-  double A[3][3] = {{1,2,3},
-                    {4,5,6},
-                    {7,8,9}};
-                
   int col_B = 2, row_B = 3;
-  double B[3][2] = {{1,2},
-                    {3,4},
-                    {5,6}};
-                
   int col_C = 2, row_C = 3;
-  double C[3][2] = {{2,2},
-                    {2,2},
-                    {2,2}};
 
+  int i,j,k;
+
+  double** A  = (double**)malloc(row_A*sizeof(double*));
+  double** B  = (double**)malloc(row_B*sizeof(double*));
+  double** Bt = (double**)malloc(col_B*sizeof(double*));
+  double** C  = (double**)malloc(row_A*sizeof(double*));
+
+  for (i=0; i<row_A; i++) A[i]  = (double*)malloc(col_A*sizeof(double));
+  for (i=0; i<row_B; i++) B[i]  = (double*)malloc(col_B*sizeof(double));
+  for (i=0; i<col_B; i++) Bt[i] = (double*)malloc(row_B*sizeof(double));
+  for (i=0; i<row_A; i++) C[i]  = (double*)malloc(col_B*sizeof(double));
+  
+  for (i=0; i<row_A; i++)
+  for (j=0; j<col_A; j++)
+    A[i][j] = 1.0 + i + j;
+
+  for (i=0; i<row_B; i++)
+  for (j=0; j<col_B; j++)
+    B[i][j] = 1.0 + i + j;
+
+  for (i=0; i<row_A; i++)
+  for (j=0; j<col_B; j++)
+    C[i][j] = 2.0;
+                
+  transpose_matrix(B, row_B, col_B, Bt);;
 
   printf("\nA:\n");
   print_matrix((double**)A, row_A, col_A);
@@ -133,7 +148,7 @@ void test_multiply() {
   print_matrix((double**)C, row_C, col_C);
   printf("\n");
 
-  multiply_matrix((double**)A, row_A, col_A, (double**)B, col_B, (double**)C);
+  multiply_matrix_v((double**)A, row_A, col_A, (double**)Bt, col_B, (double**)C);
   printf("\nC <- A * B:\n");
   print_matrix((double**)C, row_C, col_C);
   printf("\n");
@@ -154,49 +169,66 @@ void test_multiply_2() {
   double wall_start, wall_end;
   double e  = 0.0;
   double ee = 0.0;
-  double a_val = 0.0;
-  double b_val = 0.0;
-  double v  = a_val * b_val * size;
+  // double a_val = 3.0;
+  // double b_val = 4.0;
+  // double v  = a_val * b_val * size;
   double** A;    
   double** B;    
   double** C;
+  double** V; // used for validation
+
+
+
+  printf("Allocating and filling matrices...\n"); fflush(stdout);
+  srand((unsigned int)time(NULL));
 
   A = (double**)aligned_alloc(64,size*sizeof(double*));
   B = (double**)aligned_alloc(64,size*sizeof(double*));
   C = (double**)aligned_alloc(64,size*sizeof(double*));
+  V = (double**)aligned_alloc(64,size*sizeof(double*));
 
   for (i=0; i<size; i++) {
     A[i] = (double*)aligned_alloc(64,size*sizeof(double));
     B[i] = (double*)aligned_alloc(64,size*sizeof(double));
     C[i] = (double*)aligned_alloc(64,size*sizeof(double));
+    V[i] = (double*)aligned_alloc(64,size*sizeof(double));
   }
 
   #pragma omp parallel for private(i,j,k)
   for (i=0; i<size; i++) {
   for (j=0; j<size; j++) {
-    A[i][j] = a_val;
-    B[i][j] = b_val;
+    A[i][j] = (double)rand()/(double)(RAND_MAX);
+    B[i][j] = (double)rand()/(double)(RAND_MAX);
     C[i][j] = 0.0;
+    V[i][j] = 0.0;
   }
   }
 
+  printf("producing validation matrix...\n"); fflush(stdout);
+  //fill validation matrix based on naive implementation
+  multiply_matrix_vp(A, size, size, B, size, V);
 
   // printf("  sizeof A is:        %d\n", sizeof(A[0]));
 
+
+  printf("Performing multiplication experiment...\n"); fflush(stdout);
   wall_start = omp_get_wtime();
   // multiply_matrix_f(A, size, size, B, size, C);
   multiply_matrix_t(A, size, size, B, size, C);
   wall_end = omp_get_wtime();
 
+
+  printf("Checking result...\n"); fflush(stdout);
   // #pragma omp parallel for
-  #pragma omp parallel for reduction(+:ee) private(i,j)
+  // #pragma omp parallel for reduction(+:ee) private(i,j)
   for (i=0; i<size; i++) {
     for (j=0; j<size; j++) {
-      ee += (C[i][j] - v)*(C[i][j] - v);
+      ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
     }
   }
   if (ee > 0.05) {
     printf("Multiply complete: Falied\n");
+    printf("Error:    %f\n", ee);
   } else {
     printf("Multiply complete: Success\n");
     printf("Time: %fs\n", (wall_end - wall_start));
