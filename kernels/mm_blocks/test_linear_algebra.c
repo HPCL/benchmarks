@@ -75,7 +75,7 @@ LIKWID_MARKER_CLOSE;
 #endif
   printf("Bye now!\n\n");
 
-  return 0;
+  return 0; 
 }
 
 void test_add() {
@@ -177,22 +177,21 @@ void test_multiply_2() {
   double** C;
   double** V; // used for validation
 
-
+  int validate = 0;
+  // int validate = 1;
 
   printf("Allocating and filling matrices...\n"); fflush(stdout);
   srand((unsigned int)time(NULL));
 
   A = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) A[i] = (double*)aligned_alloc(64,size*sizeof(double));
   B = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) B[i] = (double*)aligned_alloc(64,size*sizeof(double));
   C = (double**)aligned_alloc(64,size*sizeof(double*));
-  V = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
 
-  for (i=0; i<size; i++) {
-    A[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    B[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    C[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    V[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  }
+  V = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) V[i] = (double*)aligned_alloc(64,size*sizeof(double));
 
   #pragma omp parallel for private(i,j,k)
   for (i=0; i<size; i++) {
@@ -204,9 +203,11 @@ void test_multiply_2() {
   }
   }
 
-  printf("producing validation matrix...\n"); fflush(stdout);
   //fill validation matrix based on naive implementation
-  multiply_matrix_vp(A, size, size, B, size, V);
+  if (validate) { 
+    printf("producing validation matrix...\n"); fflush(stdout);
+    multiply_matrix_vp(A, size, size, B, size, V);
+  }
 
   // printf("  sizeof A is:        %d\n", sizeof(A[0]));
 
@@ -218,19 +219,26 @@ void test_multiply_2() {
   wall_end = omp_get_wtime();
 
 
-  printf("Checking result...\n"); fflush(stdout);
-  // #pragma omp parallel for
-  // #pragma omp parallel for reduction(+:ee) private(i,j)
-  for (i=0; i<size; i++) {
-    for (j=0; j<size; j++) {
-      ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
+  if (validate) { 
+    printf("Checking result...\n"); fflush(stdout);
+    // #pragma omp parallel for
+    // #pragma omp parallel for reduction(+:ee) private(i,j)
+    for (i=0; i<size; i++) {
+      for (j=0; j<size; j++) {
+        ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
+      }
     }
-  }
-  if (ee > 0.05) {
-    printf("Multiply complete: Falied\n");
-    printf("Error:    %f\n", ee);
+    if (ee > 0.05) {
+      printf("Multiply complete: Falied\n");
+      printf("Error:    %f\n", ee);
+    } else {
+      printf("Multiply complete: Success\n");
+      printf("Time: %fs\n", (wall_end - wall_start));
+      printf("FLOPS Theoretical: %f\n", ((double)size*(double)size*(double)size*2.0));
+      printf("FLOPS per second:  %f\n", ((double)size*(double)size*(double)size*2.0/(wall_end - wall_start)));
+    }
   } else {
-    printf("Multiply complete: Success\n");
+    printf("Multiply complete, no validation.\n");
     printf("Time: %fs\n", (wall_end - wall_start));
     printf("FLOPS Theoretical: %f\n", ((double)size*(double)size*(double)size*2.0));
     printf("FLOPS per second:  %f\n", ((double)size*(double)size*(double)size*2.0/(wall_end - wall_start)));
