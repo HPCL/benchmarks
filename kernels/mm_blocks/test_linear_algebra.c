@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
   // omp_set_num_threads(48);
 
 #ifdef USE_CALI
+  cali_init();
   cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
 
 #ifdef USE_CALI_REG
@@ -178,7 +179,7 @@ void test_multiply_2() {
   double** V; // used for validation
 
   int validate = 0;
-  // int validate = 1;
+  // validate = 1;
 
   printf("Allocating and filling matrices...\n"); fflush(stdout);
   srand((unsigned int)time(NULL));
@@ -249,10 +250,12 @@ void test_multiply_2() {
     free(A[i]);
     free(B[i]);
     free(C[i]);
+    free(V[i]);
   }
   free(A);
   free(B);
   free(C);
+  free(V);
 }
 
 void test_transpose() {
