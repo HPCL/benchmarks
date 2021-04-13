@@ -57,19 +57,33 @@ void add_matrix(double** mat_a, int rows, int cols, double** mat_b, double** mat
 //     rows in b == cols in a
 //     c is initialized to the same size as b
 //post mat_c has the result of multipling mat_a and mat_b
-void multiply_matrix(double** mat_a, int rows_a, int cols_a, double** mat_b, int cols_b, double** mat_c);
+void multiply_matrix_s(double** mat_a, int rows_a, int cols_a, double** mat_b, int cols_b, double** mat_c);
 // same but with b transposed
+void multiply_matrix_d(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
+// loop interchanged
+void multiply_matrix_i(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
+// b transposed
 void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
-// b transposed with different loops flipped
+// same but with b transposed and blocked
+void multiply_matrix_b(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
+// b transposed with different loops flipped blocked
 void multiply_matrix_f(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
+
 // validated matrix multiply
 void multiply_matrix_v(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
+// validated matrix multiply in parallel
 void multiply_matrix_vp(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);

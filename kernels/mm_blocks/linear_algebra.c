@@ -32,12 +32,12 @@ void add_matrix(double** mat_a, int rows, int cols, double** mat_b, double** mat
 
 }
 
-//multiply matrices together
+//multiply matrices together, serial
 //pre all matrices are initialized, c shouldn't have any important data in it
 //     rows in b == cols in a
 //     c is initialized to the same size as b
 //post mat_c has the result of multipling mat_a and mat_b
-void multiply_matrix(double** mat_a, int rows_a, int cols_a, 
+void multiply_matrix_s(double** mat_a, int rows_a, int cols_a, 
                      double** mat_b, int cols_b, 
                      double** mat_c) {
 
@@ -54,13 +54,182 @@ void multiply_matrix(double** mat_a, int rows_a, int cols_a,
 
 }
 
+
 //multiply matrices together
+//this version flips the j and k loops in an attempt to improve vectorization
+//pre all matrices are initialized, c shouldn't have any important data in it
+//     mat b is NOT transposed
+//     rows in b == cols in a
+//     c is initialized to the same size as b
+//post mat_c has the result of multipling mat_a and mat_b
+void multiply_matrix_d(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c) {
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_START("default_mm");
+}
+#endif
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("default_mm");
+#endif
+
+#pragma omp parallel
+{
+#ifdef USE_CALI_REG
+CALI_MARK_BEGIN("default_mm");
+#endif
+
+  #pragma omp for
+  for (int i = 0; i < rows_a; i++ ) {
+      for (int j = 0; j < cols_b; j++) {
+          #pragma omp simd
+          for (int k = 0; k < cols_a; k++)
+            mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[k][j];
+      }
+  } // i
+
+#ifdef USE_CALI_REG
+CALI_MARK_END("default_mm");
+#endif
+}
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("default_mm");
+#endif
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_STOP("default_mm");
+}
+#endif
+
+}
+
+
+//multiply matrices together
+//this version flips the j and k loops in an attempt to improve vectorization
+//pre all matrices are initialized, c shouldn't have any important data in it
+//     mat b is NOT transposed
+//     rows in b == cols in a
+//     c is initialized to the same size as b
+//post mat_c has the result of multipling mat_a and mat_b
+void multiply_matrix_i(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c) {
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_START("interchange_mm");
+}
+#endif
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("interchange_mm");
+#endif
+
+#pragma omp parallel
+{
+#ifdef USE_CALI_REG
+CALI_MARK_BEGIN("interchange_mm");
+#endif
+
+  #pragma omp for
+  for (int j = 0; j < cols_b; j++) {
+    for (int i = 0; i < rows_a; i++ ) {
+          #pragma omp simd
+          for (int k = 0; k < cols_a; k++)
+            mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[k][j];
+      }
+  } 
+
+#ifdef USE_CALI_REG
+CALI_MARK_END("interchange_mm");
+#endif
+}
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("interchange_mm");
+#endif
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_STOP("interchange_mm");
+}
+#endif
+
+}
+
+
+//multiply matrices together
+//this version expects b to be transposed for cacheing reasons
+//pre all matrices are initialized, c shouldn't have any important data in it
+//     mat b is transposed
+//     rows in b == cols in a
+//     c is initialized to the same size as b
+//post mat_c has the result of multipling mat_a and mat_b
+void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c) {
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_START("transpose_mm");
+}
+#endif
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("transpose_mm");
+#endif
+
+#pragma omp parallel
+{
+#ifdef USE_CALI_REG
+CALI_MARK_BEGIN("transpose_mm");
+#endif
+
+  #pragma omp for
+  for (int i = 0; i < rows_a; i++ ) {
+      for (int j = 0; j < cols_b; j++) {
+          #pragma omp simd
+          for (int k = 0; k < cols_a; k++)
+            mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
+      }
+  } // i
+
+#ifdef USE_CALI_REG
+CALI_MARK_END("transpose_mm");
+#endif
+}
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("transpose_mm");
+#endif
+
+#ifdef USE_LIKWID
+#pragma omp parallel
+{
+LIKWID_MARKER_STOP("transpose_mm");
+}
+#endif
+
+}
+
+
+//multiply matrices together; blocking and b is transposed
 //pre all matrices are initialized, c shouldn't have any important data in it
 //     mat b is trnasposed
 //     rows in b == cols in a
 //     c is initialized to the same size as b
 //post mat_c has the result of multipling mat_a and mat_b
-void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+void multiply_matrix_b(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c) {
 
@@ -92,6 +261,7 @@ CALI_MARK_BEGIN("block_mm");
         for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS) {
           #pragma omp simd
           // #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
+          // #pragma clang loop vectorize_width(8)
           for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
             mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
         }
@@ -148,16 +318,16 @@ CALI_MARK_BEGIN("block_mm");
 #endif
 
   #pragma omp for
-  for (int i = 0; i < rows_a; i++ ) {
 
-    for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS)
-      for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
-        for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
-          #pragma omp simd aligned(mat_a, mat_b, mat_c: 64)
-          for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
+  for (int kkk = 0; kkk < cols_a; kkk = kkk + BLOCK_COLS)
+    for (int k = kkk; k < min(cols_a,kkk + BLOCK_COLS); k++)
+      for (int jjj = 0; jjj < cols_b; jjj = jjj + BLOCK_ROWS) 
+        #pragma omp simd
+        for (int j = jjj; j < min(cols_b, jjj + BLOCK_ROWS); j++) 
+          for (int i = 0; i < rows_a; i++ ) {
             mat_c[i][j] = mat_c[i][j] + mat_a[i][k] * mat_b[j][k];
 
-  } // i
+          } // i
 
 #ifdef USE_CALI_REG
 CALI_MARK_END("block_mm");
@@ -184,6 +354,7 @@ LIKWID_MARKER_STOP("block_mm");
 void transpose_matrix(double** mat_a, int rows_a, int cols_a, double** mat_c) {
   int i, j;
 
+  #pragma omp parallel for
   for (i = 0; i < rows_a; i++) {
     for (j = 0; j < cols_a; j++) {
       mat_c[j][i] = mat_a[i][j];

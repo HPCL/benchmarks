@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
   // omp_set_num_threads(48);
 
 #ifdef USE_CALI
+  cali_init();
   cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
 
 #ifdef USE_CALI_REG
@@ -75,7 +76,7 @@ LIKWID_MARKER_CLOSE;
 #endif
   printf("Bye now!\n\n");
 
-  return 0;
+  return 0; 
 }
 
 void test_add() {
@@ -167,6 +168,7 @@ void test_multiply_2() {
 
   int i,j,k;
   double wall_start, wall_end;
+  double exp_start, exp_end;
   double e  = 0.0;
   double ee = 0.0;
   // double a_val = 3.0;
@@ -174,25 +176,26 @@ void test_multiply_2() {
   // double v  = a_val * b_val * size;
   double** A;    
   double** B;    
+  double** B_T;    
   double** C;
   double** V; // used for validation
 
-
+  int validate = 0;
+  // validate = 1;
 
   printf("Allocating and filling matrices...\n"); fflush(stdout);
   srand((unsigned int)time(NULL));
 
-  A = (double**)aligned_alloc(64,size*sizeof(double*));
-  B = (double**)aligned_alloc(64,size*sizeof(double*));
   C = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  A = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) A[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  B = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) B[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  B_T = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) B_T[i] = (double*)aligned_alloc(64,size*sizeof(double));
   V = (double**)aligned_alloc(64,size*sizeof(double*));
-
-  for (i=0; i<size; i++) {
-    A[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    B[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    C[i] = (double*)aligned_alloc(64,size*sizeof(double));
-    V[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  }
+  for (i=0; i<size; i++) V[i] = (double*)aligned_alloc(64,size*sizeof(double));
 
   #pragma omp parallel for private(i,j,k)
   for (i=0; i<size; i++) {
@@ -203,34 +206,68 @@ void test_multiply_2() {
     V[i][j] = 0.0;
   }
   }
+  transpose_matrix(B, size, size, B_T);
 
-  printf("producing validation matrix...\n"); fflush(stdout);
   //fill validation matrix based on naive implementation
-  multiply_matrix_vp(A, size, size, B, size, V);
+  if (validate) { 
+    printf("producing validation matrix...\n"); fflush(stdout);
+    multiply_matrix_vp(A, size, size, B_T, size, V);
+  }
 
   // printf("  sizeof A is:        %d\n", sizeof(A[0]));
 
-
   printf("Performing multiplication experiment...\n"); fflush(stdout);
   wall_start = omp_get_wtime();
-  // multiply_matrix_f(A, size, size, B, size, C);
-  multiply_matrix_t(A, size, size, B, size, C);
+  // printf("Using default sequential implementation...\n"); fflush(stdout);
+  // multiply_matrix_s(A, size, size, B,   size, C);
+
+  printf("Using default parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_d(A, size, size, B,   size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+
+  printf("Using loop interchanged parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_i(A, size, size, B,   size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+
+  printf("Using transposed parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_t(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+
+  printf("Using blocked parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_b(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+
+  // printf("Using flipped, blocked parallel implementation...\n"); fflush(stdout);
+  // exp_start = omp_get_wtime();
+  // multiply_matrix_f(A, size, size, B_T, size, C);
+  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
   wall_end = omp_get_wtime();
 
 
-  printf("Checking result...\n"); fflush(stdout);
-  // #pragma omp parallel for
-  // #pragma omp parallel for reduction(+:ee) private(i,j)
-  for (i=0; i<size; i++) {
-    for (j=0; j<size; j++) {
-      ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
+  if (validate) { 
+    printf("Checking result...\n"); fflush(stdout);
+    // #pragma omp parallel for
+    // #pragma omp parallel for reduction(+:ee) private(i,j)
+    for (i=0; i<size; i++) {
+      for (j=0; j<size; j++) {
+        ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
+      }
     }
-  }
-  if (ee > 0.05) {
-    printf("Multiply complete: Falied\n");
-    printf("Error:    %f\n", ee);
+    if (ee > 0.05) {
+      printf("Multiply complete: Falied\n");
+      printf("Error:    %f\n", ee);
+    } else {
+      printf("Multiply complete: Success\n");
+      printf("Time: %fs\n", (wall_end - wall_start));
+      printf("FLOPS Theoretical: %f\n", ((double)size*(double)size*(double)size*2.0));
+      printf("FLOPS per second:  %f\n", ((double)size*(double)size*(double)size*2.0/(wall_end - wall_start)));
+    }
   } else {
-    printf("Multiply complete: Success\n");
+    printf("Multiply complete, no validation.\n");
     printf("Time: %fs\n", (wall_end - wall_start));
     printf("FLOPS Theoretical: %f\n", ((double)size*(double)size*(double)size*2.0));
     printf("FLOPS per second:  %f\n", ((double)size*(double)size*(double)size*2.0/(wall_end - wall_start)));
@@ -241,10 +278,12 @@ void test_multiply_2() {
     free(A[i]);
     free(B[i]);
     free(C[i]);
+    free(V[i]);
   }
   free(A);
   free(B);
   free(C);
+  free(V);
 }
 
 void test_transpose() {
