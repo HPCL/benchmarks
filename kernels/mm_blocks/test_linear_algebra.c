@@ -194,6 +194,8 @@ void test_multiply_2() {
   for (i=0; i<size; i++) B[i] = (double*)aligned_alloc(64,size*sizeof(double));
   B_T = (double**)aligned_alloc(64,size*sizeof(double*));
   for (i=0; i<size; i++) B_T[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  C = (double**)aligned_alloc(64,size*sizeof(double*));
+  for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
   V = (double**)aligned_alloc(64,size*sizeof(double*));
   for (i=0; i<size; i++) V[i] = (double*)aligned_alloc(64,size*sizeof(double));
 
