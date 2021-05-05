@@ -49,9 +49,6 @@
 
 // create and fill the mesh with starting values
 int init_mesh(struct Mesh ***mesh, int x_size, int y_size) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   struct Mesh **_mesh;
 
@@ -94,9 +91,6 @@ CALI_CXX_MARK_FUNCTION;
 
 // liberate the memory
 void free_mesh(MESH mesh, int x_size, int y_size) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int i;
 
@@ -112,9 +106,6 @@ CALI_CXX_MARK_FUNCTION;
 
 // create and fill the mesh with starting values
 int init_mesh(struct Mesh *mesh, int x_size, int y_size) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int err = FALSE;
   int i, j;
@@ -161,9 +152,6 @@ CALI_CXX_MARK_FUNCTION;
 
 // liberate the memory
 void free_mesh(struct Mesh mesh, int x_size, int y_size){
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int i;
 
@@ -189,9 +177,6 @@ double pythag(double x1, double y1, double x2, double y2) {
 
 // perform one iteration of the timestep
 void do_timestep(MESH mesh, MESH temp_mesh, int x_size, int y_size, double time, double dt) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int thr_id;
   double dt2 = dt*dt;
@@ -199,6 +184,9 @@ CALI_CXX_MARK_FUNCTION;
 
   int _x, _y, n, i, j, t;
 
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("computation");
+#endif
   // looping over all rows of the matrix
   // main source of paralleism 
   #pragma omp parallel private(_y, n, t, thr_id, dx2)
@@ -208,7 +196,7 @@ CALI_CXX_MARK_FUNCTION;
     thr_id = omp_get_thread_num();
     int neighbors[NUM_NEIGHBORS][2];
 
-#ifdef USE_CALI
+#ifdef USE_CALI_REG
 CALI_MARK_BEGIN("computation");
 #endif
 
@@ -258,7 +246,7 @@ LIKWID_MARKER_START("computation");
     } // _y loop
 
   } // _x loop
-#ifdef USE_CALI
+#ifdef USE_CALI_REG
 CALI_MARK_END("computation");
 #endif
 #ifdef USE_LIKWID
@@ -267,13 +255,13 @@ LIKWID_MARKER_STOP("computation");
 
   } // parallel region
 
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("computation");
+#endif
 } // do time step
 
 // print the mesh
 void print_mesh(MESH mesh, int x_size, int y_size) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int i, j;
 
@@ -304,9 +292,6 @@ CALI_CXX_MARK_FUNCTION;
 
 // print the mesh to file
 void output_mesh(FILE* file, MESH mesh, int x_size, int y_size) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int i, j;
 
@@ -334,10 +319,8 @@ CALI_CXX_MARK_FUNCTION;
   }
 }
 
+// runs a small test mesh over one timestep for manual verification
 int test_small_mesh() {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int err = FALSE;
 
@@ -378,11 +361,8 @@ CALI_CXX_MARK_FUNCTION;
   return err;
 }
 
-
+// main driver of performance experiments
 int run_custom_mesh(int x_size, int y_size, double time, double step, double time_stop) {
-#ifdef USE_CALI
-CALI_CXX_MARK_FUNCTION;
-#endif
 
   int err = FALSE;
 
@@ -405,11 +385,12 @@ CALI_CXX_MARK_FUNCTION;
   printf("\n\nRunning new Stencil with \n\
     x_size     = %d \n\
     y_size     = %d \n\
+    pattern    = %d \n\
     num_thr    = %d \n\
     start time = %f \n\
     time step  = %f \n\
     end time   = %f \n\n",
-    x_size, y_size, num_thr, time, step, time_stop);
+    x_size, y_size, STENCIL_TYPE, num_thr, time, step, time_stop);
 
   wall_tot_start = omp_get_wtime();
   wall_init_start = omp_get_wtime();
@@ -442,10 +423,11 @@ CALI_CXX_MARK_FUNCTION;
   fprintf(file, "\n\nRunning new Stencil with \n\
     x_size     = %d \n\
     y_size     = %d \n\
+    pattern    = %d \n\
     start time = %f \n\
     time step  = %f \n\
     end time   = %f \n\n",
-    x_size, y_size, time, step, time_stop);
+    x_size, y_size, STENCIL_TYPE, time, step, time_stop);
   output_mesh(file, main_mesh, x_size, y_size);
   printf("%fs\n", (omp_get_wtime() - io_start));
 #endif
@@ -497,10 +479,17 @@ int main(int argc, char **argv) {
 
 #ifdef USE_CALI
 cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
-#pragma omp parallel
-{
-cali_set_int(thread_attr, omp_get_thread_num());
-}
+
+#ifdef USE_CALI_REG
+  #pragma omp parallel
+  {
+  cali_set_int(thread_attr, omp_get_thread_num());
+  }
+#endif
+#ifdef USE_CALI_UNCORE
+  cali_set_int(thread_attr, omp_get_thread_num());
+#endif
+
 #endif
 
 #ifdef USE_LIKWID

@@ -38,6 +38,10 @@
 #define NUM_NEIGHBORS 81
 #define TEMP_ROWS     5
 
+#elif STENCIL_TYPE == 5
+#define NUM_NEIGHBORS 25
+#define TEMP_ROWS     3
+
 #endif
 
 #if USE_AOS
