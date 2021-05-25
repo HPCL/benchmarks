@@ -1,6 +1,7 @@
 # Repo specific
 *.out
 miss_count
+cache_conflict
 *.err
 *.json
 *.openss
