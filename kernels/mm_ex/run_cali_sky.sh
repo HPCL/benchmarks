@@ -1,10 +1,41 @@
-#!/bin/bash
+#!/bin/bash     
 #
 
-# declare -a metrics=("PAPI_TOT_CYC")
+declare -a _metrics=("PAPI_TOT_CYC")
 
 declare -a metrics=( \
+                   "skx_unc_imc0::UNC_M_CAS_COUNT:RD:cpu=0" \
+                   "skx_unc_imc1::UNC_M_CAS_COUNT:RD:cpu=0" \
+                   "skx_unc_imc2::UNC_M_CAS_COUNT:RD:cpu=0" \
+                   "skx_unc_imc3::UNC_M_CAS_COUNT:RD:cpu=0" \
+                   "skx_unc_imc4::UNC_M_CAS_COUNT:RD:cpu=0" \
+                   "skx_unc_imc5::UNC_M_CAS_COUNT:RD:cpu=0" \
+
+                   "skx_unc_imc0::UNC_M_CAS_COUNT:WR:cpu=0" \
+                   "skx_unc_imc1::UNC_M_CAS_COUNT:WR:cpu=0" \
+                   "skx_unc_imc2::UNC_M_CAS_COUNT:WR:cpu=0" \
+                   "skx_unc_imc3::UNC_M_CAS_COUNT:WR:cpu=0" \
+                   "skx_unc_imc4::UNC_M_CAS_COUNT:WR:cpu=0" \
+                   "skx_unc_imc5::UNC_M_CAS_COUNT:WR:cpu=0" \
+
+                   "skx_unc_imc0::UNC_M_CAS_COUNT:RD:cpu=23" \
+                   "skx_unc_imc1::UNC_M_CAS_COUNT:RD:cpu=23" \
+                   "skx_unc_imc2::UNC_M_CAS_COUNT:RD:cpu=23" \
+                   "skx_unc_imc3::UNC_M_CAS_COUNT:RD:cpu=23" \
+                   "skx_unc_imc4::UNC_M_CAS_COUNT:RD:cpu=23" \
+                   "skx_unc_imc5::UNC_M_CAS_COUNT:RD:cpu=23" \
+
+                   "skx_unc_imc0::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   "skx_unc_imc1::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   "skx_unc_imc2::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   "skx_unc_imc3::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   "skx_unc_imc4::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   "skx_unc_imc5::UNC_M_CAS_COUNT:WR:cpu=23" \
+                   )
+
+declare -a _metrics=( \
                     "PAPI_TOT_CYC" \
+                    "UNHALTED_REFERENCE_CYCLES" \
                     "IDQ_UOPS_NOT_DELIVERED:CORE"\
                     "UOPS_ISSUED:ANY"\
                     "UOPS_RETIRED:RETIRE_SLOTS"\
@@ -50,12 +81,34 @@ declare -a metrics=( \
                     "UOPS_DISPATCHED_PORT:PORT_6" \
                     "UOPS_DISPATCHED_PORT:PORT_7" \
                     "PARTIAL_RAT_STALLS:SCOREBOARD" \
+
+                    "PAPI_LD_INS" \
+                    "PAPI_SR_INS" \
+
+                    "PAPI_SP_OPS" \
+                    "PAPI_DP_OPS" \
+
+                    "MEM_LOAD_UOPS_RETIRED:L3_MISS" \
+                    "MEM_UOPS_RETIRED:ALL_STORES" \
+                    
+                    "MEM_LOAD_UOPS_LLC_MISS_RETIRED:LOCAL_DRAM" \
+                    "MEM_LOAD_UOPS_LLC_MISS_RETIRED:REMOTE_DRAM" \
+                    "PAPI_PRF_DM" \
+                    "PAPI_L1_TCM" \
+                    "PAPI_L1_DCM" \
+                    "PAPI_L2_TCM" \
+                    "PAPI_L2_STM" \
+                    "PAPI_L3_TCM" \
+                    "PAPI_L3_TCW" \
+                    "PAPI_L3_LDM" \
                    )
 
-
-#out_dir=cali_mm_5000_avx512_base
-out_dir=cali_mm_5000_O0_base
-mkdir ${out_dir}
+#out_dir=cali_test
+out_dir=cali_mm_5000_scalar
+#out_dir=cali_mm_5000_simd
+#out_dir=cali_mm_unc_tests
+mkdir ${out_dir}_base
+mkdir ${out_dir}_transpose
 
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
@@ -63,28 +116,23 @@ export OMP_PLACES=cores
 export CALI_SERVICES_ENABLE=trace,event,papi,mpi,mpireport
 
 for metric in "${metrics[@]}"
-do    
-  export CALI_MPIREPORT_CONFIG="SELECT *,sum(papi.${metric}) GROUP BY prop:nested,mpi.rank FORMAT json"
+do   
+
+  export CALI_MPIREPORT_CONFIG="SELECT * FORMAT json" 
+  # export CALI_MPIREPORT_CONFIG="SELECT *,sum(papi.${metric}) GROUP BY prop:nested,mpi.rank FORMAT json"
   export CALI_PAPI_COUNTERS=${metric}
-  
-  export CALI_MPIREPORT_FILENAME=${out_dir}/cali_${metric}.json
-  mpirun -n 40 ./mm_mpi
+  #export CALI_MPIREPORT_WRITE_ON_FINALIZE=false 
+  export CALI_CHANNEL_FLUSH_ON_EXIT=false
+  export CALI_LOG_VERBOSITY=1
+ 
+  export CALI_MPIREPORT_FILENAME=${out_dir}_base/cali_${metric}.json
+  mpirun -n 44 ./mm_mpi
+  export CALI_MPIREPORT_FILENAME=${out_dir}_transpose/cali_${metric}.json
+  mpirun -n 44 ./mm_mpi -t
+
 
 done
 
 
-#out_dir=cali_mm_5000_avx512_transpose
-out_dir=cali_mm_5000_O0_transpose
-mkdir ${out_dir}
-
-for metric in "${metrics[@]}"
-do    
-  export CALI_MPIREPORT_CONFIG="SELECT *,sum(papi.${metric}) GROUP BY prop:nested,mpi.rank FORMAT json"
-  export CALI_PAPI_COUNTERS=${metric}
-  
-  export CALI_MPIREPORT_FILENAME=${out_dir}/cali_${metric}.json
-  mpirun -n 40 ./mm_mpi -t
-
-done
 
 
