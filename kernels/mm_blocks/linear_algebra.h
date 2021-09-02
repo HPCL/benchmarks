@@ -70,11 +70,23 @@ void multiply_matrix_i(double** restrict __attribute__((aligned (64))) mat_a, in
 void multiply_matrix_t(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
+// b transposed and the middle loop is unroll jammed
+void multiply_matrix_uj(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
 // same but with b transposed and blocked
 void multiply_matrix_b(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);
-// b transposed with different loops flipped blocked
+// b transposed with different loops unrolled blocked
+void multiply_matrix_bu(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
+// b transposed with different loops interchanged blocked
+void multiply_matrix_bi(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
+                       double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
+                       double** restrict __attribute__((aligned (64))) mat_c);
+// b transposed with different loops flipped blocked (similar to bi)
 void multiply_matrix_f(double** restrict __attribute__((aligned (64))) mat_a, int rows_a, int cols_a, 
                        double** restrict __attribute__((aligned (64))) mat_b, int cols_b, 
                        double** restrict __attribute__((aligned (64))) mat_c);

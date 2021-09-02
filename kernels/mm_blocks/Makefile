@@ -1,7 +1,7 @@
-CC ?= gcc
+CC ?= icc
 # choose settings particular to a system
-# SKY=1
-A64=1
+SKY=1
+# A64=1
 #AMD=1
 #KNL=1
 
@@ -10,10 +10,10 @@ A64=1
 # i.e. 5000*8(bytes per double) = 40K bytes > L1d on Skylake
 # 2(rows)*8(bytes per double)*4096 = 64KiB which is equal to L1 on A64
 
-ORDER?=4096
+# ORDER?=4096
 # ORDER?=5120
 # ORDER?=5632
-# ORDER?=8192
+ORDER?=8192
 # ORDER?=16384
 # ORDER?=20480
 
@@ -29,6 +29,9 @@ BLOCK_COLS?=256
 # USE_CALI_UNCORE=1
 USE_SIMD=1
 
+CCE=1
+# CLANG=1
+
 INC =
 LIB =
 
@@ -41,7 +44,7 @@ OPT_BASE=-O0 -g
 
 ifdef SKY
 ifeq ($(CC),icc)
-	OPT_SIMD=-O3 -g -unroll=0 -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+	OPT_SIMD=-O3 -g -march=skylake-avx512 -qopt-zmm-usage=high
 else
 	OPT_SIMD=-O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
 endif
@@ -51,8 +54,22 @@ ifdef AMD
 	OPT_SIMD=-O3 -g -march=znver2 -mavx2
 endif
 
+
 ifdef A64
-	OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd
+ifdef CCE
+	CC=cc
+	OPT_SIMD=-O3  -s -hpreferred_vector_width=512
+	OMP=-homp
+else
+	ifdef CLANG
+		CC=armclang
+		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record  -msve-vector-bits=512
+# 		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
+# 		OPT_EXTRA=--target=aarch64-arm-none-eabi
+	else
+		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd -msve-vector-bits=512
+	endif
+endif
 endif
 
 ifdef KNL
@@ -97,8 +114,11 @@ endif
 all: test_linear
 
 test_linear:
-	$(CC) -c -o matrix_mul_validated.o ${INC} ${OPT_BASE} matrix_mul_validated.c -fopenmp
-	$(CC) -o test_linear.out ${INC} ${OPT} test_linear_algebra.c linear_algebra.c matrix_mul_validated.o ${LIB} -fopenmp
+	$(CC) -c -o matrix_mul_validated.o ${INC} ${OPT_BASE} matrix_mul_validated.c ${OMP}
+	$(CC) -c ${INC} ${OPT} linear_algebra.c ${OMP}
+	$(CC) -c ${INC} ${OPT} test_linear_algebra.c ${OMP}
+	$(CC) -o test_linear_b${BLOCK_ROWS}.out ${INC} ${OPT} test_linear_algebra.o linear_algebra.o matrix_mul_validated.o ${LIB} ${OMP}
+# 	$(CC) -o test_linear_t.out ${INC} ${OPT} test_linear_algebra.o linear_algebra.o matrix_mul_validated.o ${LIB} ${OMP}
 
 clean:
 	rm -f *.log *.o *.out
