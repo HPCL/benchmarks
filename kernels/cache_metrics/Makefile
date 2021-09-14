@@ -3,8 +3,8 @@
 # Settings; change these to select the system and optimization levels
 
 # choose settings particular to a system
-# SKY=1
-A64=1
+SKY=1
+# A64=1
 # ARM=1
 #AMD=1
 #KNL=1
@@ -17,7 +17,7 @@ ICC=1
 endif
 
 USE_CALI=1
-#USE_SIMD=1
+USE_SIMD=1
 
 INC =
 LIB =
@@ -105,7 +105,7 @@ ifdef USE_CALI
 endif
 
 
-all: miss_count cache_conflict
+all: miss_count cache_conflict byte_validation
 
 miss_count: miss_count.c
 	${CC} ${OPT} -std=c11 -g -o miss_count ${INC} miss_count.c ${LIB} -fopenmp	
@@ -114,13 +114,16 @@ miss_count: miss_count.c
 cache_conflict: cache_conflict.c
 	${CC} ${OPT} -std=c11 -g -o cache_conflict ${INC} cache_conflict.c ${LIB} -fopenmp	
 
+byte_validation: byte_validation.c
+	${CC} ${OPT} -std=c11 -g -o byte_validation ${INC} byte_validation.c ${LIB} -fopenmp	
+
 .PHONY: test
 test: miss_count
 	./miss_count
 
 .PHONY: clean
 clean:
-	$(RM) miss_count *.o
+	$(RM) miss_count cache_conflict byte_validation *.o
 	# rm -rf MULTI__*
 
 clena: clean
