@@ -3,6 +3,7 @@
 # Settings; change these to select the system and optimization levels
 
 # choose settings particular to a system
+# CAS=1
 # SKY=1
 #TX2=1
 A64=1
@@ -17,16 +18,37 @@ ICC=1
 endif
 
 USE_CALI=1
-USE_SIMD=1
+# USE_CALI_UNCORE=1
+# USE_SIMD=1
 
 INC =
 LIB =
+
+
+# CCE=1
+#CLANG=1
+FUJ=1
 
 # can be individually redined in the  arch settings below
 OPT_BASE=-O0
 
 ifdef SKY
-OPT_SIMD=-O3 -DVLEN=8 -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi
+  OMP=-fopenmp
+ifeq ($(CC),icc)
+  OPT_SIMD=-O3 -g -DVLEN=8 -march=skylake-avx512 -qopt-zmm-usage=high
+else
+  OPT_SIMD=-O3 -g -DVLEN=8 -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+endif
+endif
+
+ifdef CAS
+  OMP=-fopenmp
+ifeq ($(CC),icc)
+  OPT_BASE=-O1 -g -march=cascadelake -no-simd
+  OPT_SIMD=-O3 -g -DVLEN=8 -march=cascadelake -qopt-zmm-usage=high
+else
+  OPT_SIMD=-O3 -g -DVLEN=8 -march=cascadelake 
+endif
 endif
 
 ifdef AMD
@@ -38,8 +60,29 @@ OPT_SIMD=-O3 -DVLEN=2 -march=armv8.1-a+simd
 endif
 
 ifdef A64
-OPT_SIMD=-O3 -DVLEN=2 -march=armv8.2-a+sve
+ifdef CCE
+  CC=cc
+  OPT_SIMD=-O3  -s -hpreferred_vector_width=512
+  OMP=-homp
+else
+  ifdef CLANG
+    CC=armclang
+    OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record  -msve-vector-bits=512
+#     OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
+#     OPT_EXTRA=--target=aarch64-arm-none-eabi
+  else
+    ifdef FUJ
+      CC=fcc
+      OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Ksimd_reg_size=512
+  #     OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
+  #     OPT_EXTRA=--target=aarch64-arm-none-eabi
+    else
+      OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd -msve-vector-bits=512
+    endif
+  endif
 endif
+endif
+
 
 ifdef KNL
 ifdef ICC
@@ -67,13 +110,20 @@ ifdef USE_CALI
   LIB  += -lcaliper
 endif
 
+ifdef USE_CALI_UNCORE
+  INC += -DUSE_CALI_UNCORE
+else
+  ifdef USE_CALI
+    INC += -DUSE_CALI_REG
+  endif
+endif
 
 # OPT += -qopt-streaming-stores=never
 
 all: n_body
 
-n_body: n_body.c
-	${CC} ${OPT} -g -std=c11 -o n_body ${INC} n_body.c ${LIB} -fopenmp -lm 
+n_body:
+	${CC} ${OPT} -g -std=c11 -o n_body_scalar ${INC} n_body.c ${LIB} -fopenmp -lm 
 
 .PHONY: test
 

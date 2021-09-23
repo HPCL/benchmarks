@@ -77,28 +77,41 @@ int main(int argc, char **argv) {
 
   omp_set_num_threads(input.threads);
   int threads = omp_get_max_threads();
-  printf("Available threads =  %d \n", threads);
+  printf("\nAvailable threads =  %d \n", threads);
+
+
+#ifdef USE_CALI
+  cali_init();
+  cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
+
+#ifdef USE_CALI_REG
+  #pragma omp parallel
+  {
+  cali_set_int(thread_attr, omp_get_thread_num());
+  }
+#endif
+#ifdef USE_CALI_UNCORE
+  cali_set_int(thread_attr, omp_get_thread_num());
+#endif
+
+#endif
+
 
   // initialize the matrices
   printf("init...\n");
   create_particles(input.order, &particles);
 
-  printf("Running N Body ...\n");
+  printf("Running N Body .....");fflush(stdout);
   start = omp_get_wtime();
 
-#ifdef USE_CALI
-CALI_MARK_BEGIN("N_Body");
-#endif
 
   n_body_problem(input.order, input.time_steps, &parameters, &particles);
   
 
-#ifdef USE_CALI
-CALI_MARK_END("N_Body");
-#endif
+  end = omp_get_wtime();
+  printf("%f\n\n", end-start);
 
   destroy_particles(input.order, &particles);
-  end = omp_get_wtime();
 
   return 0;
 
@@ -118,8 +131,20 @@ void n_body_problem(size_t order, size_t time_steps,
 
   for (int i = 0; i < time_steps; i++) {
 
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_BEGIN("N_Body");
+#endif
+
     // compute
-    #pragma omp parallel for
+    #pragma omp parallel
+    {
+
+#ifdef USE_CALI_REG
+CALI_MARK_BEGIN("N_Body");
+#endif
+    
+    #pragma omp for
     for (int j = 0; j < order; j++) {
       double Fx = 0.0;
       double Fy = 0.0;
@@ -144,13 +169,23 @@ void n_body_problem(size_t order, size_t time_steps,
     }
 
     //update
+    #pragma omp for
     for (int j = 0; j < order; j++) {
-      particles->x[j] = particles->vx[j] * dt;
-      particles->y[j] = particles->vy[j] * dt;
-      particles->z[j] = particles->vz[j] * dt;
+      particles->x[j] += particles->vx[j] * dt;
+      particles->y[j] += particles->vy[j] * dt;
+      particles->z[j] += particles->vz[j] * dt;
     }
 
-  }
+#ifdef USE_CALI_REG
+CALI_MARK_END("N_Body");
+#endif
+
+    } //parallel
+
+#ifdef USE_CALI_UNCORE
+CALI_MARK_END("N_Body");
+#endif
+  } // time step
 
 
 }
