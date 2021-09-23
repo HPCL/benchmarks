@@ -223,35 +223,47 @@ void test_multiply_2() {
   // printf("Using default sequential implementation...\n"); fflush(stdout);
   // multiply_matrix_s(A, size, size, B,   size, C);
 
-  // printf("Using default parallel implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
-  // multiply_matrix_d(A, size, size, B,   size, C);
-  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#ifdef DEFAULT
+  printf("Using default parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_d(A, size, size, B,   size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
-  // printf("Using loop interchanged parallel implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
-  // multiply_matrix_i(A, size, size, B,   size, C);
-  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#ifdef INTERCHANGE
+  printf("Using loop interchanged parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_i(A, size, size, B,   size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
-  // printf("Using transposed parallel implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
-  // multiply_matrix_t(A, size, size, B_T, size, C);
-  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#ifdef TRANSPOSE
+  printf("Using transposed parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_t(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
-  // printf("Using unroll-jam parallel implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
-  // multiply_matrix_uj(A, size, size, B_T, size, C);
-  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#ifdef UNROLLJAM
+  printf("Using unroll-jam parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_uj(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
+#ifdef BLOCKED
   printf("Using blocked parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
   multiply_matrix_b(A, size, size, B_T, size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
-  // printf("Using blocked unrolled implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
-  // multiply_matrix_bu(A, size, size, B_T, size, C);
-  // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#ifdef BLOCK_UNROLL
+  printf("Using blocked unrolled implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_bu(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
 
   // printf("Using blocked interchange parallel implementation..."); fflush(stdout);
   // exp_start = omp_get_wtime();
