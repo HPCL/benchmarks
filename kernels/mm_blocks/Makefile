@@ -1,6 +1,7 @@
 CC ?= icc
 # choose settings particular to a system
-SKY=1
+# SKY=1
+CAS=1
 # A64=1
 #AMD=1
 #KNL=1
@@ -27,7 +28,7 @@ BLOCK_COLS?=256
 # USE_LIKWID=1
 # USE_CALI=1
 # USE_CALI_UNCORE=1
-USE_SIMD=1
+# USE_SIMD=1
 
 CCE=1
 # CLANG=1
@@ -38,15 +39,26 @@ LIB =
 MPIRUN = mpirun
 
 # can be individually redined in the  arch settings below
-OPT_BASE=-O0 -g 
+ 
 
-# friendly reminder that -no-fma and -S may be useful -qopt-report-phase=vec
+# friendly reminder that -qopt-report-phase=vec -no-fma -qno-opt-prefetch and -S may be useful
 
 ifdef SKY
+	OMP=-fopenmp
 ifeq ($(CC),icc)
 	OPT_SIMD=-O3 -g -march=skylake-avx512 -qopt-zmm-usage=high
 else
 	OPT_SIMD=-O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+endif
+endif
+
+ifdef CAS
+	OMP=-fopenmp
+ifeq ($(CC),icc)
+	OPT_BASE=-O3 -g -march=cascadelake -no-simd
+	OPT_SIMD=-O3 -g -march=cascadelake -qopt-zmm-usage=high
+else
+	OPT_SIMD=-O3 -g -march=cascadelake 
 endif
 endif
 
@@ -110,6 +122,13 @@ OPT=${OPT_BASE}
 ifdef USE_SIMD
 	OPT=${OPT_SIMD}
 endif
+
+OPT += -DDEFAULT
+OPT += -DINTERCHANGE
+OPT += -DTRANSPOSE
+OPT += -DUNROLLJAM
+OPT += -DBLOCKED
+OPT += -DBLOCK_UNROLL
 
 all: test_linear
 
