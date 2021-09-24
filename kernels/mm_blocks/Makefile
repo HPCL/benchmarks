@@ -120,10 +120,8 @@ ifdef USE_SIMD
 	OPT=${OPT_SIMD}
 endif
 
-ifdef D
 OPT += -DDEFAULT
 EXE=test_linear_d.out
-endif
 
 ifdef I
 OPT += -DINTERCHANGE
