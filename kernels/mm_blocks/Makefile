@@ -122,22 +122,22 @@ endif
 
 ifdef D
 OPT += -DDEFAULT
-EXE=
+EXE=test_linear_d.out
 endif
 
 ifdef I
 OPT += -DINTERCHANGE
-EXE=
+EXE=test_linear_i.out
 endif
 
 ifdef T
 OPT += -DTRANSPOSE
-EXE=
+EXE=test_linear_t.out
 endif
 
 ifdef U
 OPT += -DUNROLLJAM
-EXE=
+EXE=test_linear_uj.out
 endif
 
 ifdef B
