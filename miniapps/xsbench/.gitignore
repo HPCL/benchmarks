@@ -1,0 +1,14 @@
+# binaries
+*.o
+*.exe
+XSBench
+run_*
+*.map
+*.txt
+
+# tau
+.tau/*
+
+# caliper
+cali_*
+
