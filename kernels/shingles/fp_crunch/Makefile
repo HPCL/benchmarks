@@ -112,8 +112,9 @@ endif
 all: fp_crunch
 
 fp_crunch: fp_crunch.c fma.c Makefile
-	${CC} ${OPT} -g -c -std=c11 ${INC} fma.c ${LIB} 
-	${CC} ${OPT_BASE} -g -std=c11 -o fp_crunch ${INC} fp_crunch.c fp_utils.c fma.o ${LIB} -fopenmp -fopenmp-simd -lm 
+	${CC} ${OPT} -g -c -std=c11 ${INC} fma.c ${LIB}  -fopenmp
+	${CC} ${OPT_BASE} -g -c -std=c11 ${INC} fp_utils.c ${LIB}  -fopenmp
+	${CC} ${OPT_BASE} -g -std=c11 -o fp_crunch ${INC} fp_crunch.c fp_utils.o fma.o ${LIB} -fopenmp -fopenmp-simd -lm 
 
 .PHONY: test
 
