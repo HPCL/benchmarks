@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
   // Get input and set parameters
   //----------------------------------------------------------------------------//
   struct Inputs input;
+  DATA_TYPE norm;
   int n_trials;
   int n_flops;
   int n_threads;
@@ -140,8 +141,15 @@ int main(int argc, char **argv) {
     // Prevent dead code elimination.
     if ( (fa[0] == 0.0) ||  (fb[0] == 0.0) || (fc[0] == 0.0 ) )
     {
-      printf("You screwed up\n\n");
+      printf("You messed up\n\n");
       exit(1);
+    }
+
+    if ( omp_get_thread_num() == 0 ) {
+      #pragma omp parallel for shared(fa) reduction(+:norm)
+      for (int i = 0; i < DATA_SIZE; i++) {
+        norm += fa[i] * fa[i];
+      }
     }
 
     // Bigger hammer to prevent dead code elimination.
@@ -150,6 +158,7 @@ int main(int argc, char **argv) {
     // fclose( f );
 
   } // parallel
+
 
   //----------------------------------------------------------------------------//
   // Compute and print final output.
@@ -175,12 +184,16 @@ int main(int argc, char **argv) {
                         (double) flops_per_elm *
                         (double) DATA_SIZE;
 
-  printf( "%.6f s\n%30s: %.1f GFLOPs\n%30s: %.1f GFLOP/s\n\n", 
+  printf( "%.6f s\n%30s: %.1f GFLOPs\n%30s: %.1f GFLOP/s\n%30s: %.5f \n%30s: %.5f \n\n", 
           t1 - t0, 
           "Flops",
           gflops, 
           "Performance",
-          gflops / ( t1 - t0 ) );
+          gflops / ( t1 - t0 ),
+          "Benchmark Norm",
+          norm,
+          "Theoretical Norm",
+          fma_v(n_trials) );
 
 
   //----------------------------------------------------------------------------//

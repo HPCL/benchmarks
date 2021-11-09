@@ -33,7 +33,7 @@ fma:
                 # COST MODEL DECISION WAS IGNORED
 ..LN0:
 	.file   1 "fma.c"
-	.loc    1  13  is_stmt 1
+	.loc    1  15  is_stmt 1
 	.cfi_startproc
 ..___tag_value_fma.2:
 ..L3:
@@ -41,20 +41,20 @@ fma:
 ..LN1:
 	.loc    1  9  prologue_end  is_stmt 1
 ..LN2:
-	.loc    1  14  is_stmt 1
-        vmovups   (%rdi), %zmm1                                 #14.17
+	.loc    1  16  is_stmt 1
+        vmovups   (%rdx), %zmm1                                 #16.17
 ..LN3:
-        vmovups   (%rsi), %zmm0                                 #14.28
+        vmovups   (%rsi), %zmm0                                 #16.28
 ..LN4:
-        vfmadd213pd (%rdx), %zmm0, %zmm1                        #14.5
+        vfmadd213pd (%rdi), %zmm0, %zmm1                        #16.5
 ..LN5:
-        vmovupd   %zmm1, (%rdx)                                 #14.5
+        vmovupd   %zmm1, (%rdi)                                 #16.5
 ..LN6:
-	.loc    1  17  is_stmt 1
-        vzeroupper                                              #17.1
+	.loc    1  19  is_stmt 1
+        vzeroupper                                              #19.1
 ..LN7:
-	.loc    1  17  epilogue_begin  is_stmt 1
-        ret                                                     #17.1
+	.loc    1  19  epilogue_begin  is_stmt 1
+        ret                                                     #19.1
         .align    16,0x90
 ..LN8:
                                 # LOE
@@ -120,10 +120,10 @@ fma:
 //	DW_AT_comp_dir:
 	.4byte .debug_str
 //	DW_AT_name:
-	.4byte .debug_str+0x31
+	.4byte .debug_str+0x3a
 //	DW_AT_producer:
-	.4byte .debug_str+0x37
-	.4byte .debug_str+0xa3
+	.4byte .debug_str+0x40
+	.4byte .debug_str+0xac
 //	DW_AT_language:
 	.byte 0x01
 //	DW_AT_use_UTF8:
@@ -160,7 +160,7 @@ fma:
 //	DW_AT_type:
 	.4byte 0x00000080
 //	DW_AT_name:
-	.4byte .debug_str+0x112
+	.4byte .debug_str+0x11b
 //	DW_AT_location:
 	.2byte 0x5501
 //	DW_TAG_formal_parameter:
@@ -172,7 +172,7 @@ fma:
 //	DW_AT_type:
 	.4byte 0x00000080
 //	DW_AT_name:
-	.4byte .debug_str+0x118
+	.4byte .debug_str+0x121
 //	DW_AT_location:
 	.2byte 0x5401
 //	DW_TAG_formal_parameter:
@@ -184,7 +184,7 @@ fma:
 //	DW_AT_type:
 	.4byte 0x00000080
 //	DW_AT_name:
-	.4byte .debug_str+0x11e
+	.4byte .debug_str+0x127
 //	DW_AT_location:
 	.2byte 0x5101
 //	DW_TAG_variable:
@@ -213,7 +213,7 @@ fma:
 //	DW_AT_encoding:
 	.byte 0x04
 //	DW_AT_name:
-	.4byte .debug_str+0x10b
+	.4byte .debug_str+0x114
 //	DW_TAG_base_type:
 	.byte 0x08
 //	DW_AT_byte_size:
@@ -340,9 +340,10 @@ fma:
 	.8byte 0x65766172672f656d
 	.8byte 0x636e65622f656c6c
 	.8byte 0x6b2f736b72616d68
-	.8byte 0x662f736c656e7265
-	.8byte 0x68636e7572635f70
-	.byte 0x00
+	.8byte 0x732f736c656e7265
+	.8byte 0x2f73656c676e6968
+	.8byte 0x636e7572635f7066
+	.2byte 0x0068
 	.4byte 0x2e616d66
 	.2byte 0x0063
 	.8byte 0x2952286c65746e49

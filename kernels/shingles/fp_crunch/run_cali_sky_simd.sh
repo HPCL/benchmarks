@@ -3,7 +3,7 @@
 
 declare -a _metrics=("PAPI_TOT_CYC")
 
-declare -a metrics=( \
+declare -a _metrics=( \
                    "skx_unc_imc0::UNC_M_CAS_COUNT:RD:cpu=0" \
                    "skx_unc_imc1::UNC_M_CAS_COUNT:RD:cpu=0" \
                    "skx_unc_imc2::UNC_M_CAS_COUNT:RD:cpu=0" \
@@ -34,7 +34,7 @@ declare -a metrics=( \
                    )
 
 
-declare -a _metrics=( \
+declare -a metrics=( \
                     "PAPI_TOT_CYC" \
                     "UNHALTED_REFERENCE_CYCLES" \
                     "IDQ_UOPS_NOT_DELIVERED:CORE"\

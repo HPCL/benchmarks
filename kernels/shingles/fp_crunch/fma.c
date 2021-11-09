@@ -2,7 +2,7 @@
  
 // element-wise multiply add of three arrays
 // 
-inline void fma(
+void fma(
   DATA_TYPE* restrict mat_a, 
   DATA_TYPE* restrict mat_b, 
   DATA_TYPE* restrict mat_c

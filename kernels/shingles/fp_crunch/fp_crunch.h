@@ -23,11 +23,13 @@
 #define DATA_SIZE 1024
 #endif 
 
-inline void fma(
+void fma(
   DATA_TYPE* restrict mat_a, 
   DATA_TYPE* restrict mat_b, 
   DATA_TYPE* restrict mat_c
   );
+
+DATA_TYPE fma_v(int n_trials);
 
 inline void add(
   DATA_TYPE* restrict mat_a, 
