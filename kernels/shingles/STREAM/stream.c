@@ -50,7 +50,6 @@
 #include <sys/time.h>
 #include <omp.h>
 
-
 #ifdef USE_CALI
 #include <caliper/cali.h>
 #endif
@@ -196,6 +195,7 @@
 #endif
 #define ALIGN 64
 typedef STREAM_TYPE __attribute__((aligned(ALIGN))) array_type;
+// #define array_type double
 
 
 #define SCALAR 3.0
@@ -283,9 +283,12 @@ cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_A
   {
 
   // Some compilers require an extra keyword to recognize the "restrict" qualifier.
-  array_type* restrict a;
-  array_type* restrict b;
-  array_type* restrict c;
+  // array_type* restrict a;
+  // array_type* restrict b;
+  // array_type* restrict c;
+  STREAM_TYPE* restrict a;
+  STREAM_TYPE* restrict b;
+  STREAM_TYPE* restrict c;
   int                 quantum, checktick();
   int                 BytesPerWord;
   int                 thr_id;
@@ -313,17 +316,21 @@ cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_A
   // NOTE that the OFFSET parameter is not used in this version of the code.
   array_bytes = array_elements * sizeof( STREAM_TYPE );
   }
+  #pragma omp barrier
 
-  k = posix_memalign( (void **) &a, array_alignment, array_bytes );
-  if ( k != 0 ) {
+  k = -1;
+  a = (double*)aligned_alloc(array_alignment,array_bytes);
+  // k = posix_memalign( (void **) &a, array_alignment, array_bytes );
+  if ( a == 0 ) {
     printf( "Thread %d: Allocation of array a failed, return code is %d\n",
             thr_id,
             k );
     exit( 1 );
   }
 
-  k = posix_memalign( (void **) &b, array_alignment, array_bytes );
-  if ( k != 0 )
+  b = (double*)aligned_alloc(array_alignment,array_bytes);
+  // k = posix_memalign( (void **) &b, array_alignment, array_bytes );
+  if ( b == 0 )
   {
     printf( "Thread %d: Allocation of array b failed, return code is %d\n",
             thr_id,
@@ -331,8 +338,9 @@ cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_A
     exit( 1 );
   }
 
-  k = posix_memalign( (void **) &c, array_alignment, array_bytes );
-  if ( k != 0 )
+  c = (double*)aligned_alloc(array_alignment,array_bytes);
+  // k = posix_memalign( (void **) &c, array_alignment, array_bytes );
+  if ( c == 0 )
   {
     printf( "Thread %d: Allocation of array c failed, return code is %d\n",
             thr_id,
@@ -398,8 +406,14 @@ cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_A
   {    
     printf ("Number of Threads counted = %i\n",t);
   }
+  
+#pragma omp barrier 
+  
 
 #ifdef USE_CALI
+  #ifdef USE_CALI_UNCORE
+  if (thr_id == 0)
+  #endif
 cali_set_int(thread_attr, omp_get_thread_num());
 #endif
     
@@ -584,8 +598,11 @@ LIKWID_MARKER_INIT;
   // Configure beginning of Caliper measurement region.
   //---------------------------------------------------------------------
 
-  #ifdef STREAM_USE_CALI
-
+  #ifdef USE_CALI
+#ifdef USE_CALI_UNCORE
+if (thr_id == 0)
+{
+#endif
   #if defined COPY
   CALI_MARK_BEGIN("stream_copy");
 
@@ -602,6 +619,9 @@ LIKWID_MARKER_INIT;
   CALI_MARK_BEGIN("stream_all");
 
   #endif
+#ifdef USE_CALI_UNCORE
+}
+#endif
 
   #endif
 
@@ -676,8 +696,12 @@ LIKWID_MARKER_INIT;
   // Configure end of Caliper measurement region.
   //---------------------------------------------------------------------
 
-  #ifdef STREAM_USE_CALI
-
+#pragma omp barrier 
+  #ifdef USE_CALI
+#ifdef USE_CALI_UNCORE
+if (thr_id == 0)
+{
+#endif
   #if defined COPY
   CALI_MARK_END("stream_copy");
 
@@ -694,7 +718,9 @@ LIKWID_MARKER_INIT;
   CALI_MARK_END("stream_all");
 
   #endif
-
+#ifdef USE_CALI_UNCORE
+}
+#endif
   #endif
 
   #ifdef STREAM_USE_LIKWID

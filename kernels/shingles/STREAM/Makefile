@@ -3,10 +3,10 @@ CFLAGS = -O2 -fopenmp -g -qopt-streaming-stores=auto
 #CFLAGS += -S 
 LIB = 
 
-CAS=1
+# CAS=1
 # SKY=1
 #TX2=1
-# A64=1
+A64=1
 #AMD=1
 #KNL=1
 
@@ -59,7 +59,7 @@ OPT_SIMD=-O3 -DVLEN=2 -march=armv8.1-a+simd
 endif
 
 ifdef A64
-OMP=-qopenmp
+OMP=-fopenmp
 OPT_SIMD=-O3 -DVLEN=2 -march=armv8.2-a+sve
 endif
 
@@ -84,14 +84,28 @@ endif
 # L1:  Set STREAM_ARRAY_SIZE = 196608     = 2^16 * 3.
 # L2:  Set STREAM_ARRAY_SIZE = 2097152    = 2^21.
 # DDR: Set STREAM_ARRAY_SIZE = 1871708160 = 2^20 * 3   * 5 * 7 * 17.
+# STREAM_ARRAY_SIZE is the total amount divided among threads
 #---------------------------------------------------------------------------------
 # DDR: Set STREAM_ARRAY_SIZE = 2246049792 = 2^21 * 3^2     * 7 * 17.
 
 #INC+=" -DSTREAM_ARRAY_SIZE=2246049792 -DNTIMES=10 -DNTIMES_KK=15"
+
+# Cascadelake sizes
+# TODO check if it matters that arrays are equal to L1
 #---------------------------------------------------------------------------------
-INC+=-DSTREAM_ARRAY_SIZE=196608     -DNTIMES=10 -DNTIMES_KK=171360
+# INC+=-DSTREAM_ARRAY_SIZE=196608     -DNTIMES=10 -DNTIMES_KK=171360
 # INC+=-DSTREAM_ARRAY_SIZE=2097152    -DNTIMES=10 -DNTIMES_KK=16065
 # INC+=-DSTREAM_ARRAY_SIZE=1871708160 -DNTIMES=10 -DNTIMES_KK=18
+
+
+# A64FX sizes 
+#   131072 is 48 cores * 64KiB / (8 bytes * 3 arrays)
+#   1048576 8*3*2^20 bytes ~ 25 MB
+#   268435456 8*3*2^18 bytes ~  GB
+#---------------------------------------------------------------------------------
+# INC+=-DSTREAM_ARRAY_SIZE=131072     -DNTIMES=10 -DNTIMES_KK=147456
+# INC+=-DSTREAM_ARRAY_SIZE=1048576   -DNTIMES=10 -DNTIMES_KK=18432
+INC+=-DSTREAM_ARRAY_SIZE=268435456 -DNTIMES=10 -DNTIMES_KK=72
 
 
 ifdef USE_CALI 
@@ -128,7 +142,7 @@ all: stream_c.exe
 # all: stream_f.exe stream_c.exe
 
 # 800000000 should be >4x apollo's L3
-stream_c.exe: stream.c
+stream_c.exe: stream.c Makefile
 	$(CC) -g $(OPT) $(INC) stream.c -mcmodel=large -DTUNED=1 -DTRIAD=1 $(LIB) -o stream_c.exe $(OMP)
 
 clean:
