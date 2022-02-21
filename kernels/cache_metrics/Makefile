@@ -3,11 +3,12 @@
 # Settings; change these to select the system and optimization levels
 
 # choose settings particular to a system
-SKY=1
+# SKY=1
 # A64=1
 # ARM=1
 #AMD=1
 #KNL=1
+CAS=1
 
 
 CC=gcc
@@ -18,6 +19,7 @@ endif
 
 USE_CALI=1
 USE_SIMD=1
+# CLANG=1
 
 INC =
 LIB =
@@ -46,6 +48,8 @@ OPT_SIMD=-O3 -mavx512f -mavx512cd
 endif
 endif
 
+OMP=-fopenmp
+
 
 ifdef A64
 ifdef CCE
@@ -69,6 +73,18 @@ ifdef ICC
 	OPT_SIMD=-O3 -g -xCOMMON-AVX512
 else
 	OPT_SIMD=-O3 -g -mavx512f -mavx512cd
+endif
+endif
+
+
+ifdef CAS
+  OMP=-fopenmp
+ifeq ($(CC),icc)
+  OMP=-qopenmp
+  OPT_BASE=-O1 -g -march=cascadelake -no-simd
+  OPT_SIMD=-O2 -g -march=cascadelake -qopt-zmm-usage=high
+else
+  OPT_SIMD=-O3 -g -march=cascadelake 
 endif
 endif
 
@@ -112,7 +128,7 @@ miss_count: miss_count.c
 
 
 cache_conflict: cache_conflict.c
-	${CC} ${OPT} -std=c11 -g -o cache_conflict ${INC} cache_conflict.c ${LIB} -fopenmp	
+	${CC} ${OPT} -std=c11 -g -o cache_conflict ${INC} cache_conflict.c ${LIB} ${OMP}
 
 byte_validation: byte_validation.c
 	${CC} ${OPT} -std=c11 -g -o byte_validation ${INC} byte_validation.c ${LIB} -fopenmp	
