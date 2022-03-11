@@ -90,6 +90,12 @@ endif
 
 #INC+=" -DSTREAM_ARRAY_SIZE=2246049792 -DNTIMES=10 -DNTIMES_KK=15"
 
+
+SAS ?= 49152
+NT ?= 100
+TKK ?= 685440
+EXE ?= stream_c.exe
+
 # Cascadelake sizes
 # TODO check if it matters that arrays are equal to L1
 #---------------------------------------------------------------------------------
@@ -97,15 +103,22 @@ endif
 # INC+=-DSTREAM_ARRAY_SIZE=2097152    -DNTIMES=10 -DNTIMES_KK=16065
 # INC+=-DSTREAM_ARRAY_SIZE=1871708160 -DNTIMES=10 -DNTIMES_KK=18
 
+# improved cascade lake options
+INC+=-DSTREAM_ARRAY_SIZE=${SAS}     -DNTIMES=${NT} -DNTIMES_KK=${TKK}
+# INC+=-DSTREAM_ARRAY_SIZE=1048576   -DNTIMES=100 -DNTIMES_KK=32130
+# INC+=-DSTREAM_ARRAY_SIZE=2064384   -DNTIMES=100 -DNTIMES_KK=16320
+# INC+=-DSTREAM_ARRAY_SIZE=935854080 -DNTIMES=100 -DNTIMES_KK=36
+
 
 # A64FX sizes 
 #   131072 is 48 cores * 64KiB / (8 bytes * 3 arrays)
 #   1048576 8*3*2^20 bytes ~ 25 MB
-#   268435456 8*3*2^18 bytes ~  GB
+#   268435456 8*3*2^28 bytes ~  GB
 #---------------------------------------------------------------------------------
-# INC+=-DSTREAM_ARRAY_SIZE=131072     -DNTIMES=10 -DNTIMES_KK=147456
-# INC+=-DSTREAM_ARRAY_SIZE=1048576   -DNTIMES=10 -DNTIMES_KK=18432
-INC+=-DSTREAM_ARRAY_SIZE=268435456 -DNTIMES=10 -DNTIMES_KK=72
+# INC+=-DSTREAM_ARRAY_SIZE=131072     -DNTIMES=50 -DNTIMES_KK=294912
+# INC+=-DSTREAM_ARRAY_SIZE=1048576   -DNTIMES=50 -DNTIMES_KK=36864
+# INC+=-DSTREAM_ARRAY_SIZE=1048576   -DNTIMES=50 -DNTIMES_KK=36864
+# INC+=-DSTREAM_ARRAY_SIZE=1073741824 -DNTIMES=50 -DNTIMES_KK=36
 
 
 ifdef USE_CALI 
@@ -142,8 +155,8 @@ all: stream_c.exe
 # all: stream_f.exe stream_c.exe
 
 # 800000000 should be >4x apollo's L3
-stream_c.exe: stream.c Makefile
-	$(CC) -g $(OPT) $(INC) stream.c -mcmodel=large -DTUNED=1 -DTRIAD=1 $(LIB) -o stream_c.exe $(OMP)
+stream_c.exe:
+	$(CC) -g $(OPT) $(INC) stream.c -mcmodel=large -DTUNED=1 -DTRIAD=1 $(LIB) -o $(EXE) $(OMP)
 
 clean:
 	rm -f stream_f.exe stream_c.exe *.o
