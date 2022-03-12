@@ -2,7 +2,7 @@
 run_STREAM.py
 
 This script builds and run STREAM to match the different sizes of 
-
+for x in {32..4096..64}; do python run_STREAM.py -c 48 $x -1 -1; done
 
 Brian J Gravelle
 gravelle@cs.uoregon.edu
@@ -15,8 +15,7 @@ from math import floor
 
 # caliper run file has two inputs. the size and the executable
 # caliper_run_file % (64, "stream_c_64kib.exe")
-caliper_run_file='''
-#!/bin/bash
+caliper_run_file='''#!/bin/bash
 #
 declare -a _metrics=("PAPI_TOT_CYC")
 
@@ -133,7 +132,7 @@ def main(cores, size_L1, size_L2, size_L3, cali):
 	print("Running Cache STREAM for Shingles")
 
 	iter_ops = int(33690746880) # ops 
-	ntimes = int(100)
+	ntimes = int(50)
 
 	if(size_L1 > 0):
 		run_stream(size_L1, iter_ops, ntimes, cores, cali)
