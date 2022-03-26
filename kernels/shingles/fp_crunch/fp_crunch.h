@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
+#include <math.h>
 #include <string.h>
 
 #ifdef USE_CALI
@@ -19,28 +20,48 @@
 #define DATA_TYPE_NAME "single"
 #endif
 
+#define TRUE  1
+#define FALSE 0
+
 #ifndef DATA_SIZE
 #define DATA_SIZE 1024
 #endif 
 
-void fma(
+#ifdef USE_COS
+#define OP(x,y)    cos(x)
+#elif USE_LOG
+#define OP(x,y)    log(x)
+#elif USE_DIV
+#define OP(x,y)    x/y
+#elif USE_ADD
+#define OP(x,y)    x+y
+#else
+#define OP(x,y)    x * y
+#endif
+
+void my_fma(
   DATA_TYPE* restrict mat_a, 
   DATA_TYPE* restrict mat_b, 
-  DATA_TYPE* restrict mat_c
+  DATA_TYPE* restrict mat_c, 
+  const int n_trials
   );
 
 DATA_TYPE fma_v(int n_trials);
 
-inline void add(
+void add(
   DATA_TYPE* restrict mat_a, 
   DATA_TYPE* restrict mat_b, 
-  DATA_TYPE* restrict mat_c
+  DATA_TYPE* restrict mat_c, 
+  const int n_trials
   );
 
-inline void mul(
+void mul(
   DATA_TYPE* restrict mat_a, 
   DATA_TYPE* restrict mat_b, 
-  DATA_TYPE* restrict mat_c
+  DATA_TYPE* restrict mat_c, 
+  const int n_trials
   );
 
 #endif
+
+
