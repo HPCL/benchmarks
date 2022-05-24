@@ -64,11 +64,9 @@ int main(int argc, char **argv) {
 
 
 #ifdef USE_CALI
-cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
-#pragma omp parallel
-{
-cali_set_int(thread_attr, omp_get_thread_num());
-}
+  cali_init();
+  cali_id_t thread_attr = cali_create_attribute("thread_id", CALI_TYPE_INT, CALI_ATTR_ASVALUE | CALI_ATTR_SKIP_EVENTS);
+  cali_set_int(thread_attr, omp_get_thread_num());
 #endif
 
   TYPE *A, *B, *C;
@@ -96,13 +94,25 @@ cali_set_int(thread_attr, omp_get_thread_num());
 
 void loop_over_data(TYPE* A, size_t size, size_t offset, size_t num_loops) {
 
-  TYPE scale = 1.012;
+  TYPE scale = 1.012;    
+  // warm up cache
+  for (int j = 0; j < size; j += offset) {
+    A[j] = scale*A[j];
+  }
+
+#ifdef USE_CALI
+CALI_MARK_BEGIN("cache_loop");
+#endif
 
   for (int i = 0; i < num_loops; i++) {
     for (int j = 0; j < size; j += offset) {
       A[j] = scale*A[j];
     }
   }
+
+#ifdef USE_CALI
+CALI_MARK_END("cache_loop");
+#endif
 
 }
 
