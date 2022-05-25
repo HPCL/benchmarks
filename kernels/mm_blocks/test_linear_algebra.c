@@ -160,6 +160,18 @@ void test_multiply_2() {
 #ifdef ORDER
   size = ORDER;
 #endif
+#ifndef GAP
+#define GAP 0
+#endif
+
+  // int rows_a = 1024;
+  // int cols_a = 8192; // be larer than L1 = 8192
+  // int cols_b = 512;
+
+  int rows_a = size;
+  int cols_a = size; 
+  int cols_b = size;
+
 
   printf("Running blocked matrix multiply.\n");
   printf("  Matrix side length: %d\n", size);
@@ -186,34 +198,69 @@ void test_multiply_2() {
   printf("Allocating and filling matrices...\n"); fflush(stdout);
   srand((unsigned int)time(NULL));
 
-  C = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  A = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) A[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  B = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) B[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  B_T = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) B_T[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  C = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
-  V = (double**)aligned_alloc(64,size*sizeof(double*));
-  for (i=0; i<size; i++) V[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  // C = (double**)aligned_alloc(256,size*sizeof(double*));
+  // for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(256,size*sizeof(double));
+  // A = (double**)aligned_alloc(256,size*sizeof(double*));
+  // for (i=0; i<size; i++) A[i] = (double*)aligned_alloc(256,size*sizeof(double));
+  // B = (double**)aligned_alloc(256,size*sizeof(double*));
+  // for (i=0; i<size; i++) B[i] = (double*)aligned_alloc(256,size*sizeof(double));
+  // B_T = (double**)aligned_alloc(256,size*sizeof(double*));
+  // for (i=0; i<size; i++) B_T[i] = (double*)aligned_alloc(256,size*sizeof(double));
+  // // C = (double**)aligned_alloc(64,size*sizeof(double*));
+  // // for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  // V = (double**)aligned_alloc(256,size*sizeof(double*));
+  // for (i=0; i<size; i++) V[i] = (double*)aligned_alloc(256,size*sizeof(double));
+
+  C = (double**)aligned_alloc(256,rows_a*sizeof(double*));
+  for (i=0; i<rows_a; i++) C[i] = (double*)aligned_alloc(256,cols_b*sizeof(double)+GAP);
+  A = (double**)aligned_alloc(256,rows_a*sizeof(double*));
+  for (i=0; i<rows_a; i++) A[i] = (double*)aligned_alloc(256,cols_a*sizeof(double)+GAP);
+  B = (double**)aligned_alloc(256,cols_a*sizeof(double*));
+  for (i=0; i<cols_a; i++) B[i] = (double*)aligned_alloc(256,cols_b*sizeof(double)+GAP);
+  B_T = (double**)aligned_alloc(256,cols_b*sizeof(double*));
+  for (i=0; i<cols_b; i++) B_T[i] = (double*)aligned_alloc(256,cols_a*sizeof(double)+GAP);
+  // C = (double**)aligned_alloc(64,size*sizeof(double*));
+  // for (i=0; i<size; i++) C[i] = (double*)aligned_alloc(64,size*sizeof(double));
+  V = (double**)aligned_alloc(256,rows_a*sizeof(double*));
+  for (i=0; i<rows_a; i++) V[i] = (double*)aligned_alloc(256,cols_b*sizeof(double)+GAP);
+
+  // #pragma omp parallel for private(i,j,k)
+  // for (i=0; i<size; i++) {
+  // for (j=0; j<size; j++) {
+  //   A[i][j] = (double)rand()/(double)(RAND_MAX);
+  //   B[i][j] = (double)rand()/(double)(RAND_MAX);
+  //   C[i][j] = 0.0;
+  //   V[i][j] = 0.0;
+  // }
+  // }
 
   #pragma omp parallel for private(i,j,k)
-  for (i=0; i<size; i++) {
-  for (j=0; j<size; j++) {
+  for (i=0; i<rows_a; i++)
+  for (j=0; j<cols_a; j++)
     A[i][j] = (double)rand()/(double)(RAND_MAX);
+
+  #pragma omp parallel for private(i,j,k)
+  for (i=0; i<cols_a; i++)
+  for (j=0; j<cols_b; j++)
     B[i][j] = (double)rand()/(double)(RAND_MAX);
+
+  #pragma omp parallel for private(i,j,k)
+  for (i=0; i<rows_a; i++)
+  for (j=0; j<cols_b; j++)
     C[i][j] = 0.0;
+
+  #pragma omp parallel for private(i,j,k)
+  for (i=0; i<rows_a; i++)
+  for (j=0; j<cols_b; j++)
     V[i][j] = 0.0;
-  }
-  }
-  transpose_matrix(B, size, size, B_T);
+
+  transpose_matrix(B, cols_a, cols_b, B_T);
 
   //fill validation matrix based on naive implementation
   if (validate) { 
     printf("producing validation matrix...\n"); fflush(stdout);
-    multiply_matrix_vp(A, size, size, B_T, size, V);
+    // multiply_matrix_vp(A, size, size, B_T, size, V);
+    multiply_matrix_vp(A, rows_a, cols_a, B_T, cols_b, V);
   }
 
   // printf("  sizeof A is:        %d\n", sizeof(A[0]));
@@ -226,48 +273,62 @@ void test_multiply_2() {
 #ifdef DEFAULT
   printf("Using default parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_d(A, size, size, B,   size, C);
+  multiply_matrix_d(A, rows_a, cols_a, B, cols_b, C);
+  // multiply_matrix_d(A, size, size, B,   size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
 #ifdef INTERCHANGE
   printf("Using loop interchanged parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_i(A, size, size, B,   size, C);
+  multiply_matrix_i(A, rows_a, cols_a, B, cols_b, C);
+  // multiply_matrix_i(A, size, size, B,   size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
 #ifdef TRANSPOSE
   printf("Using transposed parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_t(A, size, size, B_T, size, C);
+  multiply_matrix_t(A, rows_a, cols_a, B_T, cols_b, C);
+  // multiply_matrix_t(A, size, size, B_T, size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
 #ifdef UNROLLJAM
   printf("Using unroll-jam parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_uj(A, size, size, B_T, size, C);
+  multiply_matrix_uj(A, rows_a, cols_a, B_T, cols_b, C);
+  // multiply_matrix_uj(A, size, size, B_T, size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
 #ifdef BLOCKED
   printf("Using blocked parallel implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_b(A, size, size, B_T, size, C);
+  multiply_matrix_b(A, rows_a, cols_a, B_T, cols_b, C);
+  // multiply_matrix_b(A, size, size, B_T, size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
 #ifdef BLOCK_UNROLL
   printf("Using blocked unrolled implementation..."); fflush(stdout);
   exp_start = omp_get_wtime();
-  multiply_matrix_bu(A, size, size, B_T, size, C);
+  multiply_matrix_bu(A, rows_a, cols_a, B_T, cols_b, C);
+  // multiply_matrix_bu(A, size, size, B_T, size, C);
   exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 #endif
 
-  // printf("Using blocked interchange parallel implementation..."); fflush(stdout);
-  // exp_start = omp_get_wtime();
+#ifdef BLOCK_INTERCHANGE
+  printf("Using blocked interchange parallel implementation..."); fflush(stdout);
+  exp_start = omp_get_wtime();
+  multiply_matrix_bi(A, rows_a, cols_a, B_T, cols_b, C);
   // multiply_matrix_bi(A, size, size, B_T, size, C);
+  exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
+#endif
+
+  // printf("Using blocked parallel without transpose implementation..."); fflush(stdout);
+  // exp_start = omp_get_wtime();
+  // multiply_matrix_bnt(A, size, size, B_T, size, C);
   // exp_end = omp_get_wtime(); printf(" %fs\n", (exp_end - exp_start));
 
   // printf("Using flipped, blocked parallel implementation...\n"); fflush(stdout);
@@ -281,8 +342,13 @@ void test_multiply_2() {
     printf("Checking result...\n"); fflush(stdout);
     // #pragma omp parallel for
     // #pragma omp parallel for reduction(+:ee) private(i,j)
-    for (i=0; i<size; i++) {
-      for (j=0; j<size; j++) {
+    // for (i=0; i<size; i++) {
+    //   for (j=0; j<size; j++) {
+    //     ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
+    //   }
+    // }
+    for (i=0; i<rows_a; i++) {
+      for (j=0; j<cols_b; j++) {
         ee += (C[i][j] - V[i][j])*(C[i][j] - V[i][j]);
       }
     }
@@ -303,12 +369,17 @@ void test_multiply_2() {
   }
 
 
-  for (i=0; i<size; i++) {
-    free(A[i]);
-    free(B[i]);
-    free(C[i]);
-    free(V[i]);
-  }
+  for (i=0; i<rows_a; i++) free(C[i]);
+  for (i=0; i<rows_a; i++) free(A[i]);
+  for (i=0; i<cols_a; i++) free(B[i]);
+  for (i=0; i<cols_b; i++) free(B_T[i]);
+  for (i=0; i<rows_a; i++) free(V[i]);
+  // for (i=0; i<size; i++) {
+  //   free(A[i]);
+  //   free(B[i]);
+  //   free(C[i]);
+  //   free(V[i]);
+  // }
   free(A);
   free(B);
   free(C);

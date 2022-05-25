@@ -1,6 +1,7 @@
 CC ?= gcc
 # choose settings particular to a system
-# SKY=1
+# SKY=
+# CAS=1
 A64=1
 #AMD=1
 #KNL=1
@@ -17,6 +18,8 @@ ORDER?=8192
 # ORDER?=16384
 # ORDER?=20480
 
+# GAP?=256
+
 # BLOCK_ROWS?=256
 # BLOCK_COLS?=256
 # BLOCK_ROWS?=8192
@@ -25,12 +28,12 @@ BLOCK_ROWS?=256
 BLOCK_COLS?=256
 
 # USE_LIKWID=1
-USE_CALI=1
+# USE_CALI=1
 # USE_CALI_UNCORE=1
 USE_SIMD=1
 
 # CCE=1
-CLANG=1
+# CLANG=1
 # FUJ=1
 
 INC =
@@ -44,10 +47,21 @@ OMP=-fopenmp
 # friendly reminder that -no-fma and -S may be useful -qopt-report-phase=vec
 
 ifdef SKY
+	OMP=-fopenmp
 ifeq ($(CC),icc)
 	OPT_SIMD=-O3 -g -unroll=0 -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
 else
 	OPT_SIMD=-O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+endif
+endif
+
+ifdef CAS
+	OMP=-fopenmp
+ifeq ($(CC),icc)
+	OPT_BASE=-O3 -g -march=cascadelake -no-simd
+	OPT_SIMD=-O3 -g -march=cascadelake -qopt-zmm-usage=high
+else
+	OPT_SIMD=-O3 -g -march=cascadelake 
 endif
 endif
 
@@ -69,8 +83,8 @@ else
 	else
 		ifdef FUJ
 			CC=fcc
-			OPT_BASE=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Knosimd
-			OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Ksimd_reg_size=512
+			OPT_BASE=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Knosimd -Nlst=t -Koptmsg=2
+			OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Ksimd_reg_size=512 -Nlst=t -Koptmsg=2
 	# 		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
 	# 		OPT_EXTRA=--target=aarch64-arm-none-eabi
 		else
@@ -90,6 +104,7 @@ endif
 endif
 
 INC+=-DORDER=${ORDER}
+# INC+=-DGAP=${GAP}
 INC+=-DBLOCK_ROWS=${BLOCK_ROWS}
 INC+=-DBLOCK_COLS=${BLOCK_COLS}
 
@@ -120,8 +135,10 @@ ifdef USE_SIMD
 	OPT=${OPT_SIMD}
 endif
 
+ifdef D
 OPT += -DDEFAULT
 EXE=test_linear_d.out
+endif
 
 ifdef I
 OPT += -DINTERCHANGE
@@ -131,6 +148,11 @@ endif
 ifdef T
 OPT += -DTRANSPOSE
 EXE=test_linear_t.out
+endif
+
+ifdef TG
+OPT += -DTRANSPOSE
+EXE=test_linear_t_g${GAP}.out
 endif
 
 ifdef U
@@ -143,9 +165,20 @@ OPT += -DBLOCKED
 EXE=test_linear_b${BLOCK_ROWS}.out
 endif
 
+ifdef BG
+OPT += -DBLOCKED
+EXE=test_linear_b${BLOCK_ROWS}_g${GAP}.out
+endif
+
 ifdef BU
 OPT += -DBLOCK_UNROLL
-EXE=test_linear_b${BLOCK_ROWS}.out
+EXE=test_linear_bu${BLOCK_ROWS}.out
+endif
+
+
+ifdef BI
+OPT += -DBLOCK_INTERCHANGE
+EXE=test_linear_bi${BLOCK_ROWS}.out
 endif
 
 
@@ -158,6 +191,9 @@ test_linear:
 	$(CC) -o ${EXE} ${INC} ${OPT} test_linear_algebra.o linear_algebra.o matrix_mul_validated.o ${LIB} ${OMP}
 # 	$(CC) -o test_linear_b${BLOCK_ROWS}.out ${INC} ${OPT} test_linear_algebra.o linear_algebra.o matrix_mul_validated.o ${LIB} ${OMP}
 # 	$(CC) -o test_linear_uj.out ${INC} ${OPT} test_linear_algebra.o linear_algebra.o matrix_mul_validated.o ${LIB} ${OMP}
+
+assembly:
+	$(CC) -c ${INC} ${OPT} -S linear_algebra_separate.c ${OMP}
 
 clean:
 	rm -f *.log *.o *.out
