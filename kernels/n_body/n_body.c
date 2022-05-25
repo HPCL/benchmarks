@@ -22,6 +22,9 @@
 #define TRUE  1
 #define FALSE 0
 
+#ifndef GAP
+#define GAP 0
+#endif
 
 struct Inputs 
 {
@@ -71,7 +74,7 @@ int main(int argc, char **argv) {
   double run_time;
   double mflops;
 	
-  size_t i,j,k,r;
+  // size_t i,j,k,r;
   
   double start, end;
 
@@ -123,9 +126,9 @@ void n_body_problem(size_t order, size_t time_steps,
                     struct Parameters* parameters,
                     struct Particles* particles) {
 
-  double dx;
-  double dy;
-  double dz;
+  // double dx;
+  // double dy;
+  // double dz;
   const double dt = parameters->dt;
   const double s  = parameters->softing;
 
@@ -149,15 +152,18 @@ CALI_MARK_BEGIN("N_Body");
       double Fx = 0.0;
       double Fy = 0.0;
       double Fz = 0.0;
+      #pragma loop loop_fission_target
       for (int k = 0; k < order; k++) {
-        const double dx = particles->x[k] - particles->x[j];
-        const double dy = particles->y[k] - particles->y[j];
-        const double dz = particles->z[k] - particles->z[j];
-
-        const double dr_sq = dx*dx + dy*dy + dz*dz + s;
-        const double dr_recip = 1.0 / sqrt(dr_sq);
-        const double dr_cube = dr_recip*dr_recip*dr_recip;
-        const double m_r = particles->m[k] * dr_cube;
+        double dx,dy,dz,dr_sq,dr_recip,dr_cube,m_r;
+        dx = particles->x[k] - particles->x[j];
+        dy = particles->y[k] - particles->y[j];
+        dz = particles->z[k] - particles->z[j];
+        dr_sq = dx*dx + dy*dy + dz*dz + s;
+      #pragma statement fission_point
+        dr_recip = 1.0 / sqrt(dr_sq);
+      #pragma statement fission_point
+        dr_cube = dr_recip*dr_recip*dr_recip;
+        m_r = particles->m[k] * dr_cube;
 
         Fx += m_r * dx;
         Fy += m_r * dy;
@@ -192,13 +198,13 @@ CALI_MARK_END("N_Body");
 
 
 void create_particles(size_t order, struct Particles* particles) {
-  particles->m  = (double*)malloc(order*sizeof(double));
-  particles->x  = (double*)malloc(order*sizeof(double));
-  particles->y  = (double*)malloc(order*sizeof(double));
-  particles->z  = (double*)malloc(order*sizeof(double));
-  particles->vx = (double*)malloc(order*sizeof(double));
-  particles->vy = (double*)malloc(order*sizeof(double));
-  particles->vz = (double*)malloc(order*sizeof(double));
+  particles->m  = (double*)malloc(order*sizeof(double)+GAP);
+  particles->x  = (double*)malloc(order*sizeof(double)+GAP);
+  particles->y  = (double*)malloc(order*sizeof(double)+GAP);
+  particles->z  = (double*)malloc(order*sizeof(double)+GAP);
+  particles->vx = (double*)malloc(order*sizeof(double)+GAP);
+  particles->vy = (double*)malloc(order*sizeof(double)+GAP);
+  particles->vz = (double*)malloc(order*sizeof(double)+GAP);
 }
 
 void destroy_particles(size_t order, struct Particles* particles) {
@@ -225,14 +231,14 @@ void get_input(int argc, char **argv, struct Inputs* input) {
       printf("\n");
       printf("n body problem help usage:\n");
       printf("  -h --help ...................... print this message\n");
-      printf("  -n --num_particles [] .......... set the number of particles (65536)\n");
+      printf("  -n -o -p --order [] ............ set the number of particles (65536)\n");
       printf("  -s --time_steps [] ............. set the number of time steps (4)\n");
       printf("  -t --num_threads [] ............ set the number of threads (16)\n");
       printf("\n");
       exit(0);
     }
 
-    if ( !(strcmp("-n", argv[i])) || !(strcmp("--order", argv[i])) ) {
+    if ( !(strcmp("-n", argv[i])) || !(strcmp("-p", argv[i])) || !(strcmp("-o", argv[i])) || !(strcmp("--order", argv[i])) ) {
       if (i++ < argc){
         input->order = atoi(argv[i]);
       } else {

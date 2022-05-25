@@ -17,20 +17,22 @@ CC=icc
 ICC=1
 endif
 
-USE_CALI=1
+GAP?=0
+
+# USE_CALI=1
 # USE_CALI_UNCORE=1
-# USE_SIMD=1
+USE_SIMD=1
 
 INC =
 LIB =
-
 
 # CCE=1
 #CLANG=1
 FUJ=1
 
 # can be individually redined in the  arch settings below
-OPT_BASE=-O0
+OPT_BASE=-O0 
+OMP=-fopenmp
 
 ifdef SKY
   OMP=-fopenmp
@@ -52,32 +54,35 @@ endif
 endif
 
 ifdef AMD
-OPT_SIMD=-O3 -DVLEN=4 -march=znver2 -mavx2
+OPT_SIMD=-O3 -DVLEN=4 -march=znver2 -mavx2 -fopenmp
 endif
 
 ifdef TX2
-OPT_SIMD=-O3 -DVLEN=2 -march=armv8.1-a+simd
+OPT_SIMD=-O3 -DVLEN=2 -march=armv8.1-a+simd -fopenmp
 endif
 
 ifdef A64
 ifdef CCE
   CC=cc
-  OPT_SIMD=-O3  -s -hpreferred_vector_width=512
+  OPT_SIMD=-O3  -s -hpreferred_vector_width=512 -fopenmp
   OMP=-homp
 else
   ifdef CLANG
     CC=armclang
     OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record  -msve-vector-bits=512
+    OMP=-fopenmp
 #     OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
 #     OPT_EXTRA=--target=aarch64-arm-none-eabi
   else
     ifdef FUJ
       CC=fcc
-      OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast -Ksimd_reg_size=512
+      OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -Kfast,openmp,ocl -Nlst=t -Koptmsg=2 -Ksimd_reg_size=512 -fsave-optimization-record
+      OMP=  
   #     OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
   #     OPT_EXTRA=--target=aarch64-arm-none-eabi
     else
       OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd -msve-vector-bits=512
+      OMP=-fopenmp
     endif
   endif
 endif
@@ -118,12 +123,14 @@ else
   endif
 endif
 
+INC+=-DGAP=${GAP}
+
 # OPT += -qopt-streaming-stores=never
 
 all: n_body
 
 n_body:
-	${CC} ${OPT} -g -std=c11 -o n_body_scalar ${INC} n_body.c ${LIB} -fopenmp -lm 
+	${CC} ${OPT} -g -std=c11 -o n_body ${INC} n_body.c ${LIB} -lm 
 
 .PHONY: test
 
