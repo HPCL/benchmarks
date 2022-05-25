@@ -179,17 +179,17 @@ double pythag(double x1, double y1, double x2, double y2) {
 void do_timestep(MESH mesh, MESH temp_mesh, int x_size, int y_size, double time, double dt) {
 
   int thr_id;
-  double dt2 = dt*dt;
-  double C = 0.25, dx2 = 1.0;
+  const double dt2 = dt*dt;
+  const double C = 0.25;
+  double dx2 = 1.0;
 
-  int _x, _y, n, i, j, t;
 
 #ifdef USE_CALI_UNCORE
 CALI_MARK_BEGIN("computation");
 #endif
   // looping over all rows of the matrix
   // main source of paralleism 
-  #pragma omp parallel private(_y, n, t, thr_id, dx2)
+  #pragma omp parallel private(thr_id, dx2)
   {
 
     // establish temporary mesh for this thread
@@ -205,47 +205,71 @@ LIKWID_MARKER_START("computation");
 #endif
 
   #pragma omp for 
-  for (_x = 0; _x < x_size; _x++) {
+  for (int _x = 0; _x < x_size; _x++) {
 
     // fill next temp row with starting values
-    for (_y = 0; _y < y_size; _y++) {
+    // #pragma omp simd
+    // for (int _y = 0; _y < y_size; _y++) {
+
+    //   ACCESS_MESH(temp_mesh, _x, _y, avg) = 0;
+    //   ACCESS_MESH(temp_mesh, _x, _y, sum) = 0;
+    //   ACCESS_MESH(temp_mesh, _x, _y, pde) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, pde) * C;
+    //   ACCESS_MESH(temp_mesh, _x, _y, dep) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, dep) * C;
+
+    // }
+
+    // actually do some computation
+    #pragma omp simd
+    for (int _y = 0; _y < y_size; _y++) {
 
       ACCESS_MESH(temp_mesh, _x, _y, avg) = 0;
       ACCESS_MESH(temp_mesh, _x, _y, sum) = 0;
       ACCESS_MESH(temp_mesh, _x, _y, pde) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, pde) * C;
       ACCESS_MESH(temp_mesh, _x, _y, dep) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, dep) * C;
 
-    }
-
-    // actually do some computation
-    #pragma omp simd
-    for (_y = 0; _y < y_size; _y++) {
-
       get_neighbors(x_size, y_size, _x, _y, neighbors);
+
+      // #pragma unroll
+      // for(int n = 0; n < NUM_NEIGHBORS; n++) {
+      //   ACCESS_MESH(temp_mesh, _x, _y, avg) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg);
+      // }
+      // ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
+      // #pragma unroll
+      // for(int n = 0; n < NUM_NEIGHBORS; n++) {
+      //   ACCESS_MESH(temp_mesh, _x, _y, sum) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)/NUM_NEIGHBORS;
+      // }
+      // #pragma unroll
+      // for(int n = 0; n < NUM_NEIGHBORS; n++){
+      //   dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+      //   ACCESS_MESH(temp_mesh, _x, _y, pde) += (-2*dt2 * ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], pde)) / ((dx2 + 1.0) * C);
+      // }
+      // #pragma unroll
+      // for(int n = 0; n < NUM_NEIGHBORS; n++){
+      //   dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+      //   ACCESS_MESH(temp_mesh, _x, _y, dep) += (ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg)*dt2 * \
+      //                             ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], dep)) / \
+      //                             ((dx2 + ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)) * C);
+      // }
+
       #pragma unroll
-      for(n = 0; n < NUM_NEIGHBORS; n++) {
+      for(int n = 0; n < NUM_NEIGHBORS; n++) {
         ACCESS_MESH(temp_mesh, _x, _y, avg) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg);
-      }
-      ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
-      #pragma unroll
-      for(n = 0; n < NUM_NEIGHBORS; n++) {
+
         ACCESS_MESH(temp_mesh, _x, _y, sum) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)/NUM_NEIGHBORS;
-      }
-      #pragma unroll
-      for(n = 0; n < NUM_NEIGHBORS; n++){
+
         dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
         ACCESS_MESH(temp_mesh, _x, _y, pde) += (-2*dt2 * ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], pde)) / ((dx2 + 1.0) * C);
-      }
-      #pragma unroll
-      for(n = 0; n < NUM_NEIGHBORS; n++){
-        dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+
+        // dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
         ACCESS_MESH(temp_mesh, _x, _y, dep) += (ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg)*dt2 * \
                                   ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], dep)) / \
                                   ((dx2 + ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)) * C);
        }
-    } // _y loop
+      ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
 
+    } // _y loop
   } // _x loop
+
 #ifdef USE_CALI_REG
 CALI_MARK_END("computation");
 #endif
@@ -258,6 +282,91 @@ LIKWID_MARKER_STOP("computation");
 #ifdef USE_CALI_UNCORE
 CALI_MARK_END("computation");
 #endif
+} // do time step
+
+void do_timestep_warmup(MESH mesh, MESH temp_mesh, int x_size, int y_size, double time, double dt) {
+
+  int thr_id;
+  const double dt2 = dt*dt;
+  const double C = 0.25;
+  double dx2 = 1.0;
+
+  // looping over all rows of the matrix
+  // main source of paralleism 
+  #pragma omp parallel private(thr_id, dx2)
+  {
+
+    // establish temporary mesh for this thread
+    thr_id = omp_get_thread_num();
+    int neighbors[NUM_NEIGHBORS][2];
+
+  #pragma omp for 
+  for (int _x = 0; _x < x_size; _x++) {
+
+    // fill next temp row with starting values
+    #pragma omp simd
+    for (int _y = 0; _y < y_size; _y++) {
+
+      ACCESS_MESH(temp_mesh, _x, _y, avg) = 0;
+      ACCESS_MESH(temp_mesh, _x, _y, sum) = 0;
+      ACCESS_MESH(temp_mesh, _x, _y, pde) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, pde) * C;
+      ACCESS_MESH(temp_mesh, _x, _y, dep) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, dep) * C;
+
+    }
+
+    // actually do some computation
+    #pragma omp simd
+    for (int _y = 0; _y < y_size; _y++) {
+      
+      // ACCESS_MESH(temp_mesh, _x, _y, avg) = 0;
+      // ACCESS_MESH(temp_mesh, _x, _y, sum) = 0;
+      // ACCESS_MESH(temp_mesh, _x, _y, pde) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, pde) * C;
+      // ACCESS_MESH(temp_mesh, _x, _y, dep) = -2*dt2 * ACCESS_MESH(mesh, _x, _y, dep) * C;
+
+      get_neighbors(x_size, y_size, _x, _y, neighbors);
+
+      #pragma unroll
+      for(int n = 0; n < NUM_NEIGHBORS; n++) {
+        ACCESS_MESH(temp_mesh, _x, _y, avg) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg);
+      }
+      ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
+      #pragma unroll
+      for(int n = 0; n < NUM_NEIGHBORS; n++) {
+        ACCESS_MESH(temp_mesh, _x, _y, sum) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)/NUM_NEIGHBORS;
+      }
+      #pragma unroll
+      for(int n = 0; n < NUM_NEIGHBORS; n++){
+        dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+        ACCESS_MESH(temp_mesh, _x, _y, pde) += (-2*dt2 * ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], pde)) / ((dx2 + 1.0) * C);
+      }
+      #pragma unroll
+      for(int n = 0; n < NUM_NEIGHBORS; n++){
+        dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+        ACCESS_MESH(temp_mesh, _x, _y, dep) += (ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg)*dt2 * \
+                                  ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], dep)) / \
+                                  ((dx2 + ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)) * C);
+      }
+
+      // #pragma unroll
+      // for(int n = 0; n < NUM_NEIGHBORS; n++) {
+      //   ACCESS_MESH(temp_mesh, _x, _y, avg) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg);
+
+      //   ACCESS_MESH(temp_mesh, _x, _y, sum) += ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)/NUM_NEIGHBORS;
+
+      //   dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+      //   ACCESS_MESH(temp_mesh, _x, _y, pde) += (-2*dt2 * ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], pde)) / ((dx2 + 1.0) * C);
+
+      //   // dx2 = pythag(_x, _y, neighbors[n][X], neighbors[n][Y]); // dx^2
+      //   ACCESS_MESH(temp_mesh, _x, _y, dep) += (ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], avg)*dt2 * \
+      //                             ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], dep)) / \
+      //                             ((dx2 + ACCESS_MESH(mesh, neighbors[n][X], neighbors[n][Y], sum)) * C);
+      //  }
+      // ACCESS_MESH(temp_mesh, _x, _y, avg) /= NUM_NEIGHBORS;
+
+    } // _y loop
+  } // _x loop
+
+  } // parallel region
 } // do time step
 
 // print the mesh
@@ -431,6 +540,23 @@ int run_custom_mesh(int x_size, int y_size, double time, double step, double tim
   output_mesh(file, main_mesh, x_size, y_size);
   printf("%fs\n", (omp_get_wtime() - io_start));
 #endif
+
+
+  printf("warmup %.2f.....", time); fflush(stdout);
+  wall_step_start = omp_get_wtime();
+  do_timestep_warmup(main_mesh, temp_mesh, x_size, y_size, time, step);
+  time += step;
+  wall_step_end = omp_get_wtime();
+  printf("%fs\n", (wall_step_end - wall_step_start));
+
+  printf("warmup %.2f.....", time); fflush(stdout);
+  wall_step_start = omp_get_wtime();
+  do_timestep_warmup(temp_mesh, main_mesh, x_size, y_size, time, step);
+  time += step;
+  wall_step_end = omp_get_wtime();
+  printf("%fs\n", (wall_step_end - wall_step_start));
+
+  time=TIME;
 
   while(time < time_stop) {
 

@@ -1,13 +1,17 @@
 # matrix multiplication with openmp intended as a Caliper test
 
-# CC=g++
-CC=icc
+#CC=CC
+#LIB=-homp
+CC=g++
+#CC=icpc
 INC=
 LIB=-fopenmp
-
-# USE_CALI=1
+USE_CALI=1
 # USE_CALI_UNCORE=1
-USE_SIMD=1
+#USE_SIMD=1
+
+#SKY=1
+A64=1
 
 # CCE=1
 # CLANG=1
@@ -43,48 +47,52 @@ VARS+=-DFILE_NAME=\"mesh_5k_2k_SOA_stencil1.out\"
 #VARS+=-DUSE_AOS
 INC =
 LIB =
+OPT = 
+OPT_BASE = 
+OPT_SIMD = 
 
 MPIRUN = mpirun
 
 # can be individually redined in the  arch settings below
-OPT_BASE=-O0 -g 
-OMP=-fopenmp
+OPT_BASE = -O0 -g 
+OMP = -fopenmp
 # friendly reminder that -no-fma and -S may be useful -qopt-report-phase=vec
 
 ifdef SKY
 ifeq ($(CC),icc)
-	OPT_SIMD=-O3 -g -march=skylake-avx512 -qopt-zmm-usage=high
+	OPT_SIMD = -O3 -g -march=skylake-avx512 -qopt-zmm-usage=high
 else
-	OPT_SIMD=-O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
+	OPT_SIMD = -O3 -g -march=skylake-avx512 -mavx512f -mavx512cd -mavx512bw -mavx512dq -mavx512vl -mavx512ifma -mavx512vbmi 
 endif
 endif
 
 ifdef AMD
-	OPT_SIMD=-O3 -g -march=znver2 -mavx2
+	OPT_SIMD = -O3 -g -march=znver2 -mavx2
 endif
 
 ifdef A64
 ifdef CCE
-	CC=cc
-	OPT_SIMD=-O3 -g
-	OMP=-homp
+	CC = cc
+	OPT_SIMD = -O3 -g
+	OMP = -homp
 else
 	ifdef CLANG
-		CC=armclang
+		CC = armclang
 # 		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record  -msve-vector-bits=512
-		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
+		OPT_SIMD = -O3 -g -march=armv8.2-a+sve -mcpu=a64fx -fsave-optimization-record
 # 		OPT_EXTRA=--target=aarch64-arm-none-eabi
 	else
-		OPT_SIMD=-O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd
+		OPT_SIMD = -O3 -g -march=armv8.2-a+sve -fno-strict-aliasing -fopenmp-simd
+		OPT_BASE = -O0 -g -march=armv8.2-a
 	endif
 endif
 endif
 
 ifdef KNL
 ifdef ICC
-	OPT_SIMD=-O3 -g -xCOMMON-AVX512
+	OPT_SIMD = -O3 -g -xCOMMON-AVX512
 else
-	OPT_SIMD=-O3 -g -mavx512f -mavx512cd
+	OPT_SIMD = -O3 -g -mavx512f -mavx512cd
 endif
 endif
 
@@ -108,9 +116,9 @@ ifdef USE_LIKWID
   INC += -I/home/gravelle/soft/src/likwid/intel/include
 endif
 
-OPT=${OPT_BASE}
+OPT = ${OPT_BASE}
 ifdef USE_SIMD
-	OPT=${OPT_SIMD}
+	OPT = ${OPT_SIMD}
 endif
 
 

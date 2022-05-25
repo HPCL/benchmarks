@@ -101,6 +101,8 @@ int get_neighbors(int x_size, int y_size, int x, int y, int neighbors[NUM_NEIGHB
 
 // perform one iteration of the timestep
 void do_timestep(MESH mesh, MESH new_mesh, int x_size, int y_size, double time, double dt);
+// perform one iteration of the timestep without measurement
+void do_timestep_warmup(MESH mesh, MESH new_mesh, int x_size, int y_size, double time, double dt);
 
 // print a grid of the mesh
 void print_mesh(MESH mesh, int x_size, int y_size);
