@@ -9,9 +9,42 @@ List and briefly describe each new kernel here.
 
 
 ## mm_ex
-- our mpi based general matrix matrix multiplication
+- our MPI based general matrix matrix multiplication
+
+## mm_blocks
+- alternative matrix multiplcation implementation
+- based on OpenMP with variations
 
 
 ## stencil_ex
 - our stencil-based benchmark
 - useful for testing performance analysis techniques with code that is slightly more interesting than mm
+
+
+## cache_metrics
+- collection of benchmarks to measure cache metrics, or validate counters
+- cache conflict - benchmark to measure cache conflicts 
+- cache misses - attempt to benchmark predictable cache misses (incomplete)
+- byte validation - attempt to benchmark predictable volumes of byte movement (incomplete)
+
+## n_body
+- implentation of N Body kernel computing gavitational forces on celestial bodies
+- parallel implementation through OpenMP
+
+
+## shingles
+- two kernels to measure the performance of the floating point and memory operations
+  - fp crunch - performs repeated floating point operations to excercise the arithmetic units
+  - STREAM - modified STREAM to measure apparent bandwidth between CPUs and cache levels
+
+
+## boundness_measure
+- depricated
+- originally intended to benchmark the relative boundness of kernels based on arithmetic intensity
+- abandoned in favor of the shingles approach
+
+
+## cache_misses
+- depricated
+- Originally intended to validate cache miss hardware counters
+- abandoned in favor of the shingles approach and cache metrics
