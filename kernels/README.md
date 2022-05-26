@@ -1,6 +1,5 @@
 # Kernels
-
-List and briefly describe each new kernel here.
+A set of micro-benchmarks and kernels to aid in developing and validating performance analysis techniques. Each kernel is instrumented using the Caliper performance measurement tool, and we provide scripts to help collect relavant hardware counter data on Intel Cascadelake and Fujitsu A64FX CPUs.
 
 ## STREAM
 - A copy of the stream benchmark with instrumentation for hardware counters
