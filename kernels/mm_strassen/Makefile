@@ -1,7 +1,8 @@
 CC ?= gcc
 # choose settings particular to a system
 # SKY=
-CAS=1
+# CAS=1
+TX2=1
 # A64=1
 #AMD=1
 #KNL=1
@@ -62,6 +63,11 @@ ifeq ($(CC),icc)
 else
 	OPT_SIMD=-O3 -g -march=cascadelake
 endif
+endif
+
+ifdef TX2
+	OMP=-fopenmp
+	OPT_SIMD=-O3 -g -march=native
 endif
 
 ifdef AMD
