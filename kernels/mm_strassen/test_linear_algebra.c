@@ -166,7 +166,7 @@ void test_multiply_2() {
   double** V; // used for validation
 
   int validate = 0;
-  validate = 1;
+  // validate = 1;
 
   printf("Allocating and filling matrices...\n"); fflush(stdout);
   srand((unsigned int)time(NULL));
@@ -280,6 +280,7 @@ void test_multiply_2() {
   // }
   free(A);
   free(B);
+  free(B_T);
   free(C);
   free(V);
 }

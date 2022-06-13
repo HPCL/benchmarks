@@ -76,6 +76,8 @@ void multiply_matrix(double** mat_a, int rows_a, int cols_a,
     exit(1);
   }
 
+  #pragma omp parallel
+  #pragma omp single nowait
   multiply_matrix_strassen(mat_a, rows_a, rows_a,
                            mat_b, mat_c,
                            0, 0,
@@ -99,7 +101,15 @@ void multiply_matrix_strassen(double** mat_a, int order, int current_size,
    // multiply two numbers or whatever
    // TODO make this cover larger matrices
    if(current_size == 1) {
+
        mat_c[0][0] = mat_a[start_row_a][start_col_a] * mat_b[start_row_b][start_col_b];
+
+  } else if(current_size == 4) {
+
+        for (size_t i = 0; i < current_size; i++)
+            for (size_t j = 0; j < current_size; j++)
+                for (size_t k = 0; k < current_size; k++)
+      mat_c[i][j] += mat_a[start_row_a+i][start_col_a+k] * mat_b[start_row_b+k][start_col_b+j];
 
    } else {
     // general case
@@ -116,70 +126,80 @@ void multiply_matrix_strassen(double** mat_a, int order, int current_size,
     //    a3*b1+a4*b3  a3*b2+a4*b4
 
     // upper left
-    double** a1b1 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a2b3 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a1b2 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a2b4 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a3b1 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a4b3 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a3b2 = (double**)aligned_alloc(64,split_size*sizeof(double*));
-    double** a4b4 = (double**)aligned_alloc(64,split_size*sizeof(double*));
+    double** a1b1 = (double**)malloc(split_size*sizeof(double*));
+    double** a2b3 = (double**)malloc(split_size*sizeof(double*));
+    double** a1b2 = (double**)malloc(split_size*sizeof(double*));
+    double** a2b4 = (double**)malloc(split_size*sizeof(double*));
+    double** a3b1 = (double**)malloc(split_size*sizeof(double*));
+    double** a4b3 = (double**)malloc(split_size*sizeof(double*));
+    double** a3b2 = (double**)malloc(split_size*sizeof(double*));
+    double** a4b4 = (double**)malloc(split_size*sizeof(double*));
     for (int i=0; i<split_size; i++) {
-      a1b1[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a2b3[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a1b2[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a2b4[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a3b1[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a4b3[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a3b2[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
-      a4b4[i] = (double*)aligned_alloc(64,split_size*sizeof(double));
+      a1b1[i] = (double*)malloc(split_size*sizeof(double));
+      a2b3[i] = (double*)malloc(split_size*sizeof(double));
+      a1b2[i] = (double*)malloc(split_size*sizeof(double));
+      a2b4[i] = (double*)malloc(split_size*sizeof(double));
+      a3b1[i] = (double*)malloc(split_size*sizeof(double));
+      a4b3[i] = (double*)malloc(split_size*sizeof(double));
+      a3b2[i] = (double*)malloc(split_size*sizeof(double));
+      a4b4[i] = (double*)malloc(split_size*sizeof(double));
     }
     // TODO make this a loop
     // maybe make a list of the temp arrays
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a1b1,
                              start_row_a, start_col_a,
                              start_row_b, start_col_b); //
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a2b3,
                              start_row_a, start_col_a+split_size,
                              start_row_b+split_size, start_col_b); //
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a1b2,
                              start_row_a, start_col_a,
                              start_row_b, start_col_b+split_size);  //
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a2b4,
                              start_row_a, start_col_a+split_size,
                              start_row_b+split_size, start_col_b+split_size); //
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a3b1,
                              start_row_a+split_size, start_col_a,
                              start_row_b, start_col_b);
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a4b3,
                              start_row_a+split_size, start_col_a+split_size,
                              start_row_b+split_size, start_col_b);
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a3b2,
                              start_row_a+split_size, start_col_a,
                              start_row_b, start_col_b+split_size);
 
+    #pragma omp task shared(mat_a,mat_b)
     multiply_matrix_strassen(mat_a, order, split_size,
                              mat_b, a4b4,
                              start_row_a+split_size, start_col_a+split_size,
                              start_row_b+split_size, start_col_b+split_size);
 
+    #pragma omp taskwait
     // fill c matrix from temp
     // then C is:
     //    a1*b1+a2*b3  a1*b2+a2*b4
     //    a3*b1+a4*b3  a3*b2+a4*b4
+    #pragma omp parallel for
     for(int i = 0; i < split_size; i++) {
       for(int j = 0; j < split_size; j++) {
         mat_c[i][j]                       = a1b1[i][j] + a2b3[i][j];
