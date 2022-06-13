@@ -104,7 +104,7 @@ void multiply_matrix_strassen(double** mat_a, int order, int current_size,
 
        mat_c[0][0] = mat_a[start_row_a][start_col_a] * mat_b[start_row_b][start_col_b];
 
-  } else if(current_size == 4) {
+  } else if(current_size == BASE_SIZE) {
 
         for (size_t i = 0; i < current_size; i++)
             for (size_t j = 0; j < current_size; j++)
